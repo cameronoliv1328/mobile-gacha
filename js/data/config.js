@@ -130,42 +130,42 @@ LW.Config = {
   speedOptions: [1, 2],
 
   /* ---- Layout anchors (logical coordinates) ---------------------------
-   * Mirrors the "Spawn Anchors" section of the build file. */
+   * Fitted to the painted battlefield (assets/battlefield.jpg). Mirrors the
+   * "Spawn Anchors" section of the build file. Ranged heroes stand ON TOP of
+   * the two bastions; the Fighter group holds the apron in front of the gate. */
   anchors: {
-    Anchor_Bastion_Left_Hero: { x: 96, y: 612 },
-    Anchor_Bastion_Left_Unit_1: { x: 60, y: 632 },
-    Anchor_Bastion_Left_Unit_2: { x: 128, y: 634 },
-    Anchor_Bastion_Right_Hero: { x: 444, y: 612 },
-    Anchor_Bastion_Right_Unit_1: { x: 412, y: 634 },
-    Anchor_Bastion_Right_Unit_2: { x: 480, y: 632 },
-    Anchor_Bridge_Hero: { x: 270, y: 772 },
-    Anchor_Bridge_Unit_1: { x: 234, y: 800 },
-    Anchor_Bridge_Unit_2: { x: 306, y: 800 },
-    Anchor_EnemySpawn_Top: { x: 270, y: 28 },
-    Anchor_EnemySpawn_LeftTop: { x: 168, y: 36 },
-    Anchor_EnemySpawn_RightTop: { x: 372, y: 36 },
-    Anchor_CityDamagePoint: { x: 270, y: 916 },
-    Anchor_Turret_Main: { x: 270, y: 566 },
-    Anchor_CameraFocus: { x: 270, y: 480 },
+    Anchor_Bastion_Left_Hero: { x: 110, y: 598 },
+    Anchor_Bastion_Left_Unit_1: { x: 80, y: 612 },
+    Anchor_Bastion_Left_Unit_2: { x: 140, y: 612 },
+    Anchor_Bastion_Right_Hero: { x: 432, y: 596 },
+    Anchor_Bastion_Right_Unit_1: { x: 402, y: 610 },
+    Anchor_Bastion_Right_Unit_2: { x: 462, y: 610 },
+    Anchor_Bridge_Hero: { x: 270, y: 588 },
+    Anchor_Bridge_Unit_1: { x: 234, y: 602 },
+    Anchor_Bridge_Unit_2: { x: 306, y: 602 },
+    Anchor_EnemySpawn_Top: { x: 256, y: 58 },
+    Anchor_EnemySpawn_LeftTop: { x: 210, y: 72 },
+    Anchor_EnemySpawn_RightTop: { x: 300, y: 72 },
+    Anchor_CityDamagePoint: { x: 270, y: 946 },
+    Anchor_Turret_Main: { x: 270, y: 624 },
+    Anchor_CameraFocus: { x: 270, y: 470 },
   },
 
-  /* Main enemy path control points (top forest -> field -> gate -> bridge).
-   * Consumed by the Catmull-Rom spline. The fighter blocks on the bridge. */
+  /* Main enemy path control points, traced along the painted dirt path
+   * (top forest clearing -> winding field -> gate apron -> through gate ->
+   * bridge -> city). The Fighter group blocks at the gate apron. */
   splinePoints: [
-    { x: 270, y: 14 },
-    { x: 250, y: 90 },
-    { x: 168, y: 168 },
-    { x: 196, y: 268 },
-    { x: 352, y: 300 },
-    { x: 366, y: 392 },
-    { x: 268, y: 452 },
-    { x: 230, y: 540 },
-    { x: 270, y: 624 }, // gate
-    { x: 270, y: 712 }, // bridge top
-    { x: 270, y: 800 }, // bridge (fighter choke)
-    { x: 270, y: 904 }, // city point
+    { x: 256, y: 48 },
+    { x: 232, y: 138 },
+    { x: 198, y: 232 },
+    { x: 232, y: 318 },
+    { x: 298, y: 372 },
+    { x: 300, y: 452 },
+    { x: 276, y: 528 },
+    { x: 270, y: 600 },
+    { x: 270, y: 662 }, // gate apron (fighter choke)
+    { x: 270, y: 744 }, // through the gate
+    { x: 270, y: 852 }, // bridge
+    { x: 270, y: 946 }, // city point
   ],
-
-  /* Fraction of the spline (0..1) at which a living Fighter group blocks. */
-  blockAtFraction: 0.8,
 };

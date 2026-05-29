@@ -129,7 +129,7 @@ LW.Enemy = class Enemy {
 
   render(ctx) {
     if (!this.alive) return;
-    const scale = this.battle.map.depthScale(this.y);
+    const scale = this.battle.map.depthScale(this.y) * 1.15;
     LW.Sprites.enemy(ctx, {
       x: this.x,
       y: this.y,

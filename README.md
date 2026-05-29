@@ -15,7 +15,7 @@ is organized to mirror the Unreal Engine blueprint structure described in the bu
 
 | Menu | Battle | Upgrades | Summon | Roster |
 |---|---|---|---|---|
-| ![menu](docs/screenshots/menu.png) | ![battle](docs/screenshots/battle.png) | ![upgrade](docs/screenshots/upgrade.png) | ![summon](docs/screenshots/summon.png) | ![roster](docs/screenshots/roster.png) |
+| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![upgrade](docs/screenshots/upgrade.jpg) | ![summon](docs/screenshots/summon.jpg) | ![roster](docs/screenshots/roster.jpg) |
 
 ---
 
@@ -66,6 +66,7 @@ Files map directly onto the blueprints from the build file:
 
 ```
 index.html              # loads all modules in order; portrait stage
+assets/battlefield.jpg  # hand-painted battlefield illustration (drawn each battle)
 css/style.css           # stylized-fantasy mobile theme
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
@@ -81,7 +82,7 @@ js/
     SummonManager.js    # BP_SummonManager    - rolls, rarity tables, pity
   battle/
     Spline.js           # Spline_EnemyPath_Main - Catmull-Rom arc-length path
-    BattleMap.js        # BP_BattleMapController - anchors + painted scene
+    BattleMap.js        # BP_BattleMapController - anchors + painted battlefield bg
     BattleManager.js    # BP_BattleManager    - wave state machine, combat queries
     Combatant.js        # shared targeting/attack base
     Hero.js             # BP_HeroBase
@@ -146,3 +147,8 @@ This build realizes the **"Last Wall — Unreal Engine Build File"** spec as a b
 Where the spec describes Unreal/UMG concepts, the equivalent web technology is used (Canvas 2D for
 the perspective battle scene, DOM for menus, `localStorage` for the save game), while keeping the
 same systems, data tables, and naming so the design intent is preserved.
+
+The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
+sets the art direction — misty forest spawn, winding field path, chunky stone wall with two round
+bastions and a central gate, and a cobblestone bridge to the city. Heroes, support units, enemies,
+projectiles and VFX are drawn procedurally on top, with depth-scaled sizing for a 2.5D feel.

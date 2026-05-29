@@ -18,7 +18,7 @@ LW.SupportUnit = class SupportUnit extends LW.Combatant {
       splash: o.splash || 0,
       blocks: o.blocks,
       isHero: false,
-      scale: 0.78,
+      scale: 0.92,
       primary: o.theme.primary,
       secondary: o.theme.secondary,
       trim: o.theme.trim,
