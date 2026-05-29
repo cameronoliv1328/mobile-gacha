@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0e1118" />
+  <title>Last Wall</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Battle render + HUD -->
+    <div id="battle-layer" class="layer hidden">
+      <canvas id="stage"></canvas>
+      <div id="battle-hud"></div>
+      <div id="battle-overlay"></div>
+    </div>
+
+    <!-- Meta screens (menu / campaign / summon / roster) -->
+    <div id="ui-root" class="layer"></div>
+
+    <!-- Floating layers -->
+    <div id="modal-root"></div>
+    <div id="toast-root"></div>
+  </div>
+
+  <!-- Core utilities + data -->
+  <script src="js/util.js"></script>
+  <script src="js/data/config.js"></script>
+  <script src="js/data/heroes.js"></script>
+  <script src="js/data/enemies.js"></script>
+  <script src="js/data/levels.js"></script>
+
+  <!-- Meta systems -->
+  <script src="js/core/SaveGame.js"></script>
+  <script src="js/core/HeroCollection.js"></script>
+  <script src="js/core/SummonManager.js"></script>
+  <script src="js/core/GameInstance.js"></script>
+
+  <!-- Battle systems -->
+  <script src="js/battle/Spline.js"></script>
+  <script src="js/battle/Render.js"></script>
+  <script src="js/battle/Effects.js"></script>
+  <script src="js/battle/Projectile.js"></script>
+  <script src="js/battle/Combatant.js"></script>
+  <script src="js/battle/SupportUnit.js"></script>
+  <script src="js/battle/Hero.js"></script>
+  <script src="js/battle/Enemy.js"></script>
+  <script src="js/battle/Turret.js"></script>
+  <script src="js/battle/CityWall.js"></script>
+  <script src="js/battle/BattleMap.js"></script>
+  <script src="js/battle/BattleManager.js"></script>
+
+  <!-- UI + bootstrap -->
+  <script src="js/ui/UI.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
