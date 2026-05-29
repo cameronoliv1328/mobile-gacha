@@ -84,6 +84,9 @@ LW.SummonManager = class SummonManager {
       forced,
       isNew: add.isNew,
       dupeGold: add.dupeGold,
+      copies: add.copies,
+      unlockedTier: add.unlockedTier, // 1..3 if a duplicate ability just unlocked
+      tiers: add.tiers,
       pityRemaining: this.pityRemaining(),
     };
   }

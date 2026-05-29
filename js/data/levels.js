@@ -33,9 +33,11 @@ LW.Levels = (function () {
     return pool;
   }
 
-  // Stat multiplier applied to every enemy in a given wave.
+  // Stat multiplier applied to every enemy in a given wave. Steep enough that
+  // base heroes stall by the early cities and the late cities demand leveling,
+  // upgrades, duplicate abilities and element synergy.
   function scaleFor(cityIndex, waveIndex) {
-    return 1 + 0.2 * cityIndex + 0.07 * waveIndex;
+    return 1 + 0.34 * cityIndex + 0.1 * waveIndex;
   }
 
   /* getWave(cityIndex, waveIndex) -> { scale, isBoss, spawns:[{enemyId,t}] } */
@@ -44,24 +46,26 @@ LW.Levels = (function () {
     const scale = scaleFor(cityIndex, waveIndex);
     const pool = poolFor(cityIndex);
 
-    // Slightly tighter spawn cadence in later content.
-    const gap = Math.max(0.45, C.spawnInterval - 0.02 * cityIndex - 0.015 * waveIndex);
+    // Tighter spawn cadence in later content (more overlap = more pressure).
+    const gap = Math.max(0.38, C.spawnInterval - 0.025 * cityIndex - 0.02 * waveIndex);
 
     const ids = [];
     if (isBoss) {
-      // A wall of fodder, then the boss, then a final escort.
-      const adds = 6 + cityIndex;
+      // A wall of fodder, then the boss, then a heavy escort.
+      const adds = 8 + 2 * cityIndex;
       for (let i = 0; i < adds; i++) ids.push(U.pick(pool));
       ids.push("ogre");
-      const escort = 4 + Math.floor(cityIndex / 2);
+      const escort = 5 + cityIndex;
       for (let i = 0; i < escort; i++) ids.push(U.pick(pool));
     } else {
-      const count = 5 + cityIndex + Math.floor(waveIndex * 1.1);
+      const count = 6 + Math.round(1.5 * cityIndex) + Math.round(1.3 * waveIndex);
       for (let i = 0; i < count; i++) ids.push(U.pick(pool));
-      // Occasional mini-pressure spike of the toughest available unit.
-      if (waveIndex >= 4 && U.chance(0.5)) {
+      // Pressure spike of the toughest available unit, more common late.
+      if (waveIndex >= 3 && U.chance(0.6)) {
         const tough = pool.includes("orc") ? "orc" : "goblin";
-        ids.splice(U.randInt(2, ids.length), 0, tough, tough);
+        const n = pool.includes("orc") ? 3 : 2;
+        const at = U.randInt(2, ids.length);
+        for (let i = 0; i < n; i++) ids.splice(at, 0, tough);
       }
     }
 

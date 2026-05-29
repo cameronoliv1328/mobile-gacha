@@ -11,7 +11,7 @@ LW.SaveGame = (function () {
 
   function defaultState() {
     const heroes = {};
-    for (const id of LW.HeroData.starters) heroes[id] = { level: 1 };
+    for (const id of LW.HeroData.starters) heroes[id] = { level: 1, copies: 0 };
     return {
       version: 1,
       // Fresh start: a little gold to feel progression, but ZERO summon
@@ -53,6 +53,11 @@ LW.SaveGame = (function () {
     while (state.completedCities.length < C.CITIES) state.completedCities.push(false);
     state.team = Object.assign({}, def.team, parsed.team || {});
     state.heroes = Object.assign({}, parsed.heroes || def.heroes);
+    // Normalize hero entries (older saves may lack level/copies).
+    for (const id in state.heroes) {
+      const h = state.heroes[id] || {};
+      state.heroes[id] = { level: h.level || 1, copies: h.copies || 0 };
+    }
     state.stats = Object.assign({}, def.stats, parsed.stats || {});
     return state;
   }

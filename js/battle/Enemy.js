@@ -32,6 +32,12 @@ LW.Enemy = class Enemy {
     this.t = Math.random() * 4;
     this.facing = -1;
 
+    // Status effects (from mage Hex, Ice/Fire synergy, etc.).
+    this.slowFactor = 1;
+    this.slowT = 0;
+    this.burnDps = 0;
+    this.burnT = 0;
+
     const p = battle.spline.pointAt(0);
     this.x = p.x;
     this.y = p.y;
@@ -42,10 +48,24 @@ LW.Enemy = class Enemy {
     this.t += dt;
     this.attackCD -= dt;
 
+    // Status effects.
+    if (this.slowT > 0) {
+      this.slowT -= dt;
+      if (this.slowT <= 0) this.slowFactor = 1;
+    }
+    if (this.burnT > 0) {
+      this.hp -= this.burnDps * dt;
+      this.burnT -= dt;
+      if (this.hp <= 0) {
+        this.die();
+        return;
+      }
+    }
+
     if (this.state === "blocked") {
       // Advance toward our queue slot, then attack the held blocker.
       const diff = this.holdDistance - this.splineDistance;
-      const step = this.moveSpeed * dt;
+      const step = this.moveSpeed * this.slowFactor * dt;
       if (Math.abs(diff) <= step) this.splineDistance = this.holdDistance;
       else this.splineDistance += Math.sign(diff) * step;
       this._syncPos();
@@ -61,7 +81,7 @@ LW.Enemy = class Enemy {
       if (LW.util.dist(this.x, this.y, this.target.x, this.target.y) <= reach) {
         this.facing = this.target.x >= this.x ? 1 : -1;
         if (this.attackCD <= 0) {
-          this.target.applyDamage(this.atk);
+          this.target.applyDamage(this.atk, this);
           this.attackCD = this.attackInterval;
           this.battle.addEffect(
             new LW.Effect("spark", { x: this.target.x, y: this.target.y - 18, color: "#ff6a4a", spread: 11, life: 0.2, seed: Math.random() * 6 })
@@ -72,7 +92,7 @@ LW.Enemy = class Enemy {
     }
 
     // Moving along the path.
-    let next = this.splineDistance + this.moveSpeed * dt;
+    let next = this.splineDistance + this.moveSpeed * this.slowFactor * dt;
     // Never walk through a held bridge.
     if (this.battle.hasLivingBlocker() && next > this.battle.blockDistance) {
       next = this.battle.blockDistance;
@@ -99,6 +119,18 @@ LW.Enemy = class Enemy {
     if (!this.alive) return;
     this.hp -= dmg;
     if (this.hp <= 0) this.die();
+  }
+
+  applySlow(factor, dur) {
+    if (!this.alive) return;
+    this.slowFactor = Math.min(this.slowFactor, factor); // strongest slow wins
+    this.slowT = Math.max(this.slowT, dur);
+  }
+
+  applyBurn(dps, dur) {
+    if (!this.alive || dps <= 0) return;
+    this.burnDps = Math.max(this.burnDps, dps);
+    this.burnT = Math.max(this.burnT, dur);
   }
 
   reachCity() {
@@ -141,6 +173,32 @@ LW.Enemy = class Enemy {
       facing: this.facing,
       t: this.t,
     });
+    // Status markers.
+    if (this.slowT > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = "#7fd0ff";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y, this.radius * 1.25 * scale, this.radius * 0.5 * scale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (this.burnT > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      const fx = this.x + this.radius * 0.9 * scale;
+      const fy = this.y - this.radius * 2.4 * scale + Math.sin(this.t * 18) * 1.5;
+      ctx.fillStyle = "#ff7a2a";
+      ctx.beginPath();
+      ctx.ellipse(fx, fy, 2.4, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffd24a";
+      ctx.beginPath();
+      ctx.ellipse(fx, fy + 1, 1.2, 2.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     if (this.hp < this.maxHP) {
       const w = this.isBoss ? 52 : 22;
       LW.Sprites.healthBar(ctx, this.x, this.y - (this.radius * 2.4 + 6) * scale, w, this.hp / this.maxHP);

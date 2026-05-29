@@ -135,6 +135,7 @@ const FILES = [
   "js/core/SaveGame.js",
   "js/core/HeroCollection.js",
   "js/core/SummonManager.js",
+  "js/core/Synergy.js",
   "js/core/GameInstance.js",
   "js/battle/Spline.js",
   "js/battle/Render.js",
@@ -211,15 +212,76 @@ assert(pityHits > 0, "pity actually triggered at least once");
 console.log("  gacha ok — regular[R:" + rareCt + " E:" + epicCt + " L:" + legCt + "]  epic maxGap=" + maxGap + " pityHits=" + pityHits);
 
 /* ===================================================================== *
+ *  Duplicate abilities + element synergy
+ * ===================================================================== */
+console.log("— abilities & synergy —");
+LW.SaveGame.clear(); // fresh save (earlier gacha rolls persisted to the mock store)
+const g2 = new LW.GameInstance();
+const fid = "fighter_brick";
+assert(g2.heroes.unlockedTiers(fid) === 0, "no abilities at 0 copies");
+assert(!g2.heroes.isAttuned(fid), "not attuned at 0 copies");
+
+// Copy thresholds 1 / 2 / 4 unlock tiers I / II / III.
+g2.state.heroes[fid].copies = 1;
+assert(g2.heroes.unlockedTiers(fid) === 1 && g2.heroes.isAttuned(fid), "tier I (Attunement) at 1 copy");
+g2.state.heroes[fid].copies = 2;
+assert(g2.heroes.unlockedTiers(fid) === 2, "tier II at 2 copies");
+g2.state.heroes[fid].copies = 3;
+assert(g2.heroes.unlockedTiers(fid) === 2, "still tier II at 3 copies");
+g2.state.heroes[fid].copies = 4;
+assert(g2.heroes.unlockedTiers(fid) === 3, "tier III at 4 copies");
+
+const fmods = g2.heroes.abilityMods(fid);
+assert(fmods.reflect > 0, "fighter tier II grants reflect");
+assert(fmods.surviveOnce === true, "fighter tier III grants survive-once (most powerful)");
+assert(fmods.hpMult > 1 && fmods.atkMult > 1, "fighter abilities raise stats");
+
+// addHero on a duplicate increments copies and reports the unlock.
+const beforeCopies = g2.heroes.copies("archer_robin");
+const dup = g2.heroes.addHero("archer_robin");
+assert(!dup.isNew && dup.copies === beforeCopies + 1, "duplicate increments copy count");
+assert(dup.unlockedTier === 1, "first duplicate unlocks an ability tier");
+
+g2.state.heroes["archer_robin"].copies = 4;
+const amods = g2.heroes.abilityMods("archer_robin");
+assert(amods.extraProjectiles >= 1, "archer tier II adds a projectile");
+assert(amods.ult && amods.ult.type === "volley", "archer tier III is the Rain of Arrows ultimate");
+g2.state.heroes["mage_ember"].copies = 2;
+assert(g2.heroes.abilityMods("mage_ember").slowOnHit, "mage tier II slows on hit");
+
+// Synergy from team elements.
+const Syn = LW.Synergy;
+const ice3 = Syn.compute([{ element: "Ice", attuned: false }, { element: "Ice", attuned: false }, { element: "Ice", attuned: false }]);
+assert(ice3.tier === "major" && ice3.element === "Ice", "3 Ice heroes -> major Ice synergy");
+assert(ice3.slowOnHit && ice3.atkMult > 1 && ice3.hpMult > 1, "Ice synergy: slow + team buff");
+const fire3 = Syn.compute([{ element: "Fire", attuned: false }, { element: "Fire", attuned: false }, { element: "Fire", attuned: false }]);
+assert(fire3.burnOnHit, "Fire synergy burns enemies");
+const two = Syn.compute([{ element: "Nature", attuned: false }, { element: "Nature", attuned: false }, { element: "Fire", attuned: false }]);
+assert(two.tier === "minor", "2 shared element -> minor synergy");
+const none = Syn.compute([{ element: "Ice", attuned: false }, { element: "Fire", attuned: false }, { element: "Storm", attuned: false }]);
+assert(none.tier === "none", "all different -> no synergy");
+const attuned3 = Syn.compute([{ element: "Fire", attuned: true }, { element: "Fire", attuned: true }, { element: "Fire", attuned: true }]);
+assert(attuned3.atkMult > fire3.atkMult, "Attunement (Tier I) increases synergy potency");
+console.log("  abilities + synergy ok");
+
+/* ===================================================================== *
  *  TIER 2 — Full battle simulation
  * ===================================================================== */
 console.log("— battle simulation —");
 
 function simulateCity(cityIndex, opts) {
   opts = opts || {};
+  LW.SaveGame.clear(); // always simulate from a clean save
   const g = new LW.GameInstance();
   g.state.gold = opts.gold != null ? opts.gold : 100000;
-  if (opts.heroLevel) for (const id of g.heroes.ownedIds()) g.state.heroes[id].level = opts.heroLevel;
+  if (opts.team) {
+    for (const id of Object.values(opts.team)) if (!g.state.heroes[id]) g.state.heroes[id] = { level: 1, copies: 0 };
+    g.state.team = Object.assign({}, opts.team);
+  }
+  for (const id of g.heroes.ownedIds()) {
+    if (opts.heroLevel) g.state.heroes[id].level = opts.heroLevel;
+    if (opts.copies != null) g.state.heroes[id].copies = opts.copies;
+  }
   const battle = new LW.BattleManager(g, cityIndex);
   battle.start();
   let buys = 0;
@@ -230,8 +292,11 @@ function simulateCity(cityIndex, opts) {
   while (safety++ < maxSteps) {
     battle.update(dt);
     if (battle.phase === "upgrade") {
-      for (const type of ["hero", "wall", "turret"]) {
-        if (opts.buy !== false && battle.canAfford(type)) { battle.buyUpgrade(type); buys++; }
+      // Spend all earned gold (realistic when gold starts low).
+      if (opts.buy !== false) {
+        for (const type of ["hero", "wall", "turret"]) {
+          while (battle.canAfford(type)) { battle.buyUpgrade(type); buys++; }
+        }
       }
       battle.continueToNextWave();
     }
@@ -278,6 +343,29 @@ assert(base.battle.cityHP >= 0, "city HP non-negative");
 const r0 = base;
 assert(r0.battle.blockDistance > r0.battle.gateDistance, "block point is past the gate");
 assert(r0.battle.spline.length > 100, "spline has length");
+
+/* ---- Difficulty curve: challenging, with multiple power paths -------- */
+console.log("— difficulty —");
+const iceTeam = { bridge: "fighter_ironhide", left: "archer_fletcher", right: "mage_frost" };
+
+// Base heroes cannot carry past the early cities.
+const baseMid = simulateCity(4, { gold: 0, buy: false });
+assert(baseMid.battle.phase === "defeat", "base heroes can't clear a mid city (investment required)");
+
+// Leveling alone is not enough for the final city.
+const lvlOnly = simulateCity(9, { gold: 0, buy: false, heroLevel: 10 });
+assert(lvlOnly.battle.phase === "defeat", "leveling alone cannot clear the final city");
+
+// Path A: leveling + upgrades bought from earned wave gold clears it.
+const realUpg = simulateCity(9, { gold: 0, buy: true, heroLevel: 10 });
+console.log("  city 10 — lv10 + earned upgrades: " + realUpg.battle.phase);
+assert(realUpg.battle.phase === "victory", "final city winnable with leveling + earned upgrades");
+
+// Path B: mono-element synergy + tier-3 duplicate abilities clear the same
+// final city with NO in-battle upgrades (proving the new systems matter).
+const synFull = simulateCity(9, { gold: 0, buy: false, heroLevel: 10, team: iceTeam, copies: 4 });
+console.log("  city 10 — lv10 mono-Ice + tier-3 abilities (no upgrades): " + synFull.battle.phase);
+assert(synFull.battle.phase === "victory", "synergy + duplicate abilities clear a city leveling alone loses");
 
 /* ===================================================================== *
  *  TIER 3 — UI smoke render

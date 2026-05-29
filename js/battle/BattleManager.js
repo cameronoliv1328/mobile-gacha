@@ -29,6 +29,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.heroes = [];
     this.heroesByPos = {};
     this.bridgeHero = null;
+    this.synergy = null;
     this.units = []; // support units
     this.enemies = [];
     this.projectiles = [];
@@ -86,14 +87,22 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       const def = LW.HeroData.byId(s.id);
       if (!def) continue;
       const base = this.game.heroes.computeStats(s.id);
+      const am = this.game.heroes.abilityMods(s.id);
       const ha = A[s.hero];
-      const hero = new LW.Hero(this, { def, position: s.pos, x: ha.x, y: ha.y, baseStats: base });
+      const hero = new LW.Hero(this, { def, position: s.pos, x: ha.x, y: ha.y, baseStats: base, abilityMods: am });
       hero.unitAnchors = s.units.map((n) => A[n]);
       hero.spawnSupportUnits(hero.unitAnchors);
-      hero.applyBuffs(this.runBuffs, this.wall.bastionBonus);
       this.heroes.push(hero);
       this.heroesByPos[s.pos] = hero;
       if (s.pos === "bridge") this.bridgeHero = hero;
+    }
+
+    // Team synergy from deployed elements (potency scales with Attunement).
+    const deployed = this.heroes.map((h) => ({ element: h.element, attuned: this.game.heroes.isAttuned(h.heroId) }));
+    this.synergy = LW.Synergy.compute(deployed);
+    for (const h of this.heroes) {
+      h.synergyMods = this.synergy;
+      h.applyBuffs();
     }
   }
 
@@ -113,10 +122,11 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       h.alive = true;
       h.hp = h.maxHP;
       h.attackCD = Math.random() * h.attackInterval;
+      h.resetForWave();
       for (const u of h.supportUnits) u.alive = false; // retire old squad quietly
       h.supportUnits = [];
       h.spawnSupportUnits(h.unitAnchors);
-      h.applyBuffs(this.runBuffs, this.wall.bastionBonus);
+      h.applyBuffs();
     }
     this._cleanup();
 
@@ -227,18 +237,22 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     return best;
   }
 
-  damageEnemy(enemy, dmg, source) {
+  damageEnemy(enemy, dmg, source, status) {
     if (!enemy || !enemy.alive) return;
     const amount = Math.max(1, Math.round(dmg));
     enemy.applyDamage(amount, source);
     this._damageText(enemy.x, enemy.y - enemy.radius * 2.4, amount);
+    if (status && enemy.alive) {
+      if (status.slow) enemy.applySlow(status.slow.factor, status.slow.dur);
+      if (status.burn) enemy.applyBurn(amount * status.burn.fraction, status.burn.dur);
+    }
   }
 
-  damageEnemiesInRadius(cx, cy, radius, dmg, source, exclude) {
+  damageEnemiesInRadius(cx, cy, radius, dmg, source, exclude, status) {
     const r2 = radius * radius;
     for (const e of this.enemies) {
       if (!e.alive || e === exclude) continue;
-      if (LW.util.dist2(cx, cy, e.x, e.y) <= r2) this.damageEnemy(e, dmg, source);
+      if (LW.util.dist2(cx, cy, e.x, e.y) <= r2) this.damageEnemy(e, dmg, source, status);
     }
   }
 
@@ -359,12 +373,12 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       const U = LW.Config.UPGRADE.hero;
       this.runBuffs.heroAtk *= 1 + U.atkPct;
       this.runBuffs.heroHp *= 1 + U.hpPct;
-      for (const h of this.heroes) h.applyBuffs(this.runBuffs, this.wall.bastionBonus);
+      for (const h of this.heroes) h.applyBuffs();
     } else if (type === "wall") {
       const extra = this.wall.upgrade();
       this.cityMaxHP += extra;
       this.cityHP += extra;
-      for (const h of this.heroes) h.applyBuffs(this.runBuffs, this.wall.bastionBonus);
+      for (const h of this.heroes) h.applyBuffs();
       this.emit("city", this.cityHP);
     } else if (type === "turret") {
       this.turret.upgrade();
@@ -430,6 +444,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       phase: this.phase,
       isBoss: this.isBossWave,
       kills: this.killCount,
+      synergy: this.synergy,
     };
   }
 };

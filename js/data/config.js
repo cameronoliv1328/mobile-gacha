@@ -77,6 +77,56 @@ LW.Config = {
   SUPPORT_ATK_PCT: 0.35,
   SUPPORT_PER_HERO: 2,
 
+  /* ---- Elements (drive team synergy) ---------------------------------- */
+  ELEMENTS: {
+    Ice: { name: "Ice", color: "#7fd0ff", icon: "❄" },
+    Fire: { name: "Fire", color: "#ff8a3a", icon: "🔥" },
+    Nature: { name: "Nature", color: "#7ad06a", icon: "🌿" },
+    Storm: { name: "Storm", color: "#b08bff", icon: "⚡" },
+  },
+
+  /* ---- Duplicate special abilities ------------------------------------
+   * Pulling a hero you already own grants a "copy". Copies unlock 3 ability
+   * tiers; the third is the most powerful (a signature ultimate). Tier I is
+   * "Attunement", which empowers the hero's element synergy contribution. */
+  ABILITY_UNLOCKS: [1, 2, 4], // copies required for tiers I, II, III
+
+  ABILITIES: {
+    Fighter: [
+      { name: "Attunement", desc: "+12% HP. Empowers element synergy.", mods: { hpMult: 1.12, attune: true } },
+      { name: "Riposte", desc: "Reflect 25% of melee damage taken; +25% cleave radius.", mods: { reflect: 0.25, splashMult: 1.25 } },
+      { name: "Unbreakable", desc: "Survive one lethal hit each wave, then +40% ATK (6s); +20% HP & ATK.", mods: { hpMult: 1.2, atkMult: 1.2, surviveOnce: true } },
+    ],
+    Archer: [
+      { name: "Attunement", desc: "+12% attack speed, +10% range. Empowers element synergy.", mods: { asMult: 1.12, rangeMult: 1.1, attune: true } },
+      { name: "Double Nock", desc: "Fire an extra arrow at a 2nd target; +10% ATK.", mods: { extraProjectiles: 1, atkMult: 1.1 } },
+      { name: "Rain of Arrows", desc: "Every 6s an arrow volley storms the densest cluster; +20% ATK.", mods: { atkMult: 1.2, ult: { type: "volley", interval: 6, radius: 76, mult: 2.2 } } },
+    ],
+    Mage: [
+      { name: "Attunement", desc: "+15% splash, +8% ATK. Empowers element synergy.", mods: { splashMult: 1.15, atkMult: 1.08, attune: true } },
+      { name: "Hex", desc: "Spells slow enemies 30% for 2s; +12% ATK.", mods: { slowOnHit: { factor: 0.7, dur: 2.0 }, atkMult: 1.12 } },
+      { name: "Cataclysm", desc: "Every 7s a meteor erupts on the densest cluster; +20% ATK.", mods: { atkMult: 1.2, ult: { type: "meteor", interval: 7, radius: 98, mult: 3.0 } } },
+    ],
+  },
+
+  /* ---- Team synergy ---------------------------------------------------
+   * Based on the elements of the 3 deployed heroes. Two sharing = minor;
+   * all three sharing = major (team buff + an element effect). Potency scales
+   * with how many of the matching heroes are Attuned (Tier I ability). */
+  SYNERGY: {
+    minorCount: 2,
+    majorCount: 3,
+    attunePotencyPerHero: 0.12,
+    minor: { atkMult: 1.1 },
+    majorBase: { atkMult: 1.18, hpMult: 1.12 },
+    majorByElement: {
+      Ice: { slowOnHit: { factor: 0.7, dur: 1.5 }, label: "Frostbite — attacks slow enemies" },
+      Fire: { burnOnHit: { fraction: 0.25, dur: 3 }, label: "Wildfire — attacks ignite enemies" },
+      Nature: { regen: 0.02, hpMult: 1.06, label: "Verdant — defenders regenerate HP" },
+      Storm: { asMult: 1.18, label: "Tempest — defenders attack faster" },
+    },
+  },
+
   /* ---- Turret --------------------------------------------------------- */
   TURRET: {
     baseDamage: 18,

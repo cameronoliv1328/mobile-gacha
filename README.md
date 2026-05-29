@@ -13,9 +13,9 @@ This repository implements the [`Last Wall` design/build file](#design-source) a
 game** — a single-page, dependency-free app using **vanilla JavaScript + HTML5 Canvas**. The code
 is organized to mirror the Unreal Engine blueprint structure described in the build file.
 
-| Menu | Battle | Upgrades | Summon | Roster |
-|---|---|---|---|---|
-| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![upgrade](docs/screenshots/upgrade.jpg) | ![summon](docs/screenshots/summon.jpg) | ![roster](docs/screenshots/roster.jpg) |
+| Menu | Battlefield | Duplicate Abilities | Element Synergy | Upgrades | Summon |
+|---|---|---|---|---|---|
+| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![abilities](docs/screenshots/abilities.jpg) | ![synergy](docs/screenshots/synergy.jpg) | ![upgrade](docs/screenshots/upgrade.jpg) | ![summon](docs/screenshots/summon.jpg) |
 
 ---
 
@@ -56,7 +56,30 @@ Progress (currencies, heroes, levels, team, campaign) saves automatically to `lo
 ### Gacha rates
 - **Regular banner:** Rare 85% · Epic 15% · Legendary 0%.
 - **Epic banner:** Epic 75% · Legendary 25%, with **pity — a guaranteed Legendary after 5
-  consecutive non-Legendary pulls**. Duplicates convert to gold.
+  consecutive non-Legendary pulls**.
+- New players start with **0 summon crystals** (and the 3 Rare starters) — crystals are earned.
+- Duplicates of an owned hero unlock that hero's **special abilities** (see below); extra copies
+  past the third ability convert to gold.
+
+## Duplicate abilities & element synergy
+
+Two power systems reward collecting and team-building:
+
+**Duplicate abilities** — every hero has **3 special abilities** unlocked by pulling **copies** of
+that hero (at **1 / 2 / 4** copies). The third unlock is the most powerful — a signature *ultimate*
+(e.g. Archer's *Rain of Arrows*, Mage's *Cataclysm*) or game-changer (Fighter's *Unbreakable*:
+cheat death once per wave). Lower tiers add stats and perks (reflect, extra projectile, slow-on-hit…).
+
+**Element synergy** — every hero has an **element** (Ice 🔵 Fire 🔴 Nature 🟢 Storm 🟣); each element
+has one Fighter, Archer and Mage so a full mono-element team is buildable. The 3 deployed heroes'
+elements grant a team bonus:
+- **2 sharing** → minor synergy (+ATK).
+- **3 sharing** → major synergy: team ATK/HP **plus an element effect** — Ice slows, Fire burns,
+  Nature regenerates, Storm attacks faster.
+
+The two systems interlock as the build file describes: a hero's **first duplicate ability is
+"Attunement"**, which **empowers its synergy contribution** — a fully-attuned mono-element team gets
+a stronger synergy bonus.
 
 ---
 
@@ -80,6 +103,7 @@ js/
     GameInstance.js     # BP_LW_GameInstance  - currencies, progression, pity
     HeroCollection.js   # BP_HeroCollectionManager - ownership, leveling, team, stats
     SummonManager.js    # BP_SummonManager    - rolls, rarity tables, pity
+    Synergy.js          # element team-synergy calculator
   battle/
     Spline.js           # Spline_EnemyPath_Main - Catmull-Rom arc-length path
     BattleMap.js        # BP_BattleMapController - anchors + painted battlefield bg
@@ -99,8 +123,16 @@ test/
 ```
 
 All tuning lives in **`js/data/config.js`** (class stats, rarity multipliers, level costs, gacha
-tables, upgrade values, layout anchors, the enemy spline). Want a tougher campaign or a different
-fortress layout? Edit the data, not the systems.
+tables, **duplicate-ability tiers, element synergy bonuses**, upgrade values, **enemy scaling**,
+layout anchors, the enemy spline). Want a tougher campaign or a different fortress layout? Edit the
+data, not the systems.
+
+### Difficulty
+
+The campaign is tuned to be challenging with two viable power paths (verified by the test harness):
+base heroes stall in the early cities, leveling alone tops out mid-campaign, and the final cities
+require **either** level 10 + between-wave upgrades **or** leveling + element synergy + tier-3
+duplicate abilities. Mixing both makes the endgame comfortable.
 
 ---
 
@@ -138,6 +170,8 @@ npm run shots     # renders in Chromium -> ./screenshots, reports console errors
 | Gold + Regular Crystal each wave; Epic Crystal each city | `core/GameInstance.rewardWave / completeCity` |
 | Upgrade Heroes / Wall / Turret between waves | `BattleManager.buyUpgrade`, `ui/UI._showUpgradePanel` |
 | Epic pity -> guaranteed Legendary after 5 | `core/SummonManager._rollRarity` |
+| Duplicate copies unlock 3 ability tiers (3rd strongest) | `core/HeroCollection.abilityMods`, `config.ABILITIES` |
+| Element team synergy (e.g. 3× Ice) | `core/Synergy.js`, `BattleManager._deployTeam` |
 
 ---
 
