@@ -19,6 +19,7 @@ LW.Enemy = class Enemy {
     this.cityDamage = def.cityDamage;
     this.isBoss = !!def.isBoss;
     this.radius = def.radius;
+    this.spriteH = def.radius * (def.isBoss ? 5 : 4); // painted billboard height
     this.color = def.color;
     this.accent = def.accent;
     this.shape = def.shape;
@@ -161,18 +162,20 @@ LW.Enemy = class Enemy {
 
   render(ctx) {
     if (!this.alive) return;
-    const scale = this.battle.map.depthScale(this.y) * 1.15;
-    LW.Sprites.enemy(ctx, {
-      x: this.x,
-      y: this.y,
-      scale,
-      radius: this.radius,
-      color: this.color,
-      accent: this.accent,
-      shape: this.shape,
-      facing: this.facing,
-      t: this.t,
-    });
+    const depth = this.battle.map.depthScale(this.y);
+    const img = LW.Sprites.spriteFor(this.enemyId);
+    let topY, halfW;
+    if (img) {
+      const h = this.spriteH * depth;
+      LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y, h, facing: this.facing, bob: this.t * 7 });
+      halfW = (h * (img.width / img.height)) / 2;
+      topY = this.y - h - 4;
+    } else {
+      const scale = depth * 1.15;
+      LW.Sprites.enemy(ctx, { x: this.x, y: this.y, scale, radius: this.radius, color: this.color, accent: this.accent, shape: this.shape, facing: this.facing, t: this.t });
+      halfW = this.radius * scale;
+      topY = this.y - (this.radius * 2.4 + 6) * scale;
+    }
     // Status markers.
     if (this.slowT > 0) {
       ctx.save();
@@ -180,28 +183,27 @@ LW.Enemy = class Enemy {
       ctx.strokeStyle = "#7fd0ff";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.ellipse(this.x, this.y, this.radius * 1.25 * scale, this.radius * 0.5 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(this.x, this.y, halfW * 0.9, halfW * 0.36, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
     if (this.burnT > 0) {
       ctx.save();
       ctx.globalAlpha = 0.85;
-      const fx = this.x + this.radius * 0.9 * scale;
-      const fy = this.y - this.radius * 2.4 * scale + Math.sin(this.t * 18) * 1.5;
+      const fx = this.x + halfW * 0.55;
+      const fy = topY + 6 + Math.sin(this.t * 18) * 1.5;
       ctx.fillStyle = "#ff7a2a";
       ctx.beginPath();
-      ctx.ellipse(fx, fy, 2.4, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(fx, fy, 2.6, 5.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#ffd24a";
       ctx.beginPath();
-      ctx.ellipse(fx, fy + 1, 1.2, 2.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(fx, fy + 1, 1.3, 2.8, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
     if (this.hp < this.maxHP) {
-      const w = this.isBoss ? 52 : 22;
-      LW.Sprites.healthBar(ctx, this.x, this.y - (this.radius * 2.4 + 6) * scale, w, this.hp / this.maxHP);
+      LW.Sprites.healthBar(ctx, this.x, topY, this.isBoss ? 52 : 22, this.hp / this.maxHP);
     }
   }
 };

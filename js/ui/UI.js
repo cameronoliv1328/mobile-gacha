@@ -158,18 +158,18 @@ LW.UI = class UI {
       ctx.fillText("?", size / 2, size / 2);
       return c;
     }
-    LW.Sprites.humanoid(ctx, {
-      x: size / 2,
-      y: size * 0.86,
-      scale: size / 62,
-      cls: def.class,
-      primary: def.theme.primary,
-      secondary: def.theme.secondary,
-      trim: def.theme.trim,
-      facing: 1,
-      isHero: true,
-      bob: 0,
-    });
+    const img = LW.Sprites.spriteFor(def.id);
+    if (img) {
+      const s = Math.min((size * 0.98) / img.width, (size * 0.98) / img.height);
+      const w = img.width * s;
+      const h = img.height * s;
+      ctx.drawImage(img, size / 2 - w / 2, size - h - 1, w, h);
+    } else {
+      LW.Sprites.humanoid(ctx, {
+        x: size / 2, y: size * 0.86, scale: size / 62, cls: def.class,
+        primary: def.theme.primary, secondary: def.theme.secondary, trim: def.theme.trim, facing: 1, isHero: true, bob: 0,
+      });
+    }
     return c;
   }
 
@@ -178,17 +178,18 @@ LW.UI = class UI {
     c.width = size;
     c.height = size;
     const ctx = c.getContext("2d");
-    LW.Sprites.enemy(ctx, {
-      x: size / 2,
-      y: size * 0.82,
-      scale: (size / 80) * (def.isBoss ? 0.7 : 1.2),
-      radius: def.radius,
-      color: def.color,
-      accent: def.accent,
-      shape: def.shape,
-      facing: 1,
-      t: 0,
-    });
+    const img = LW.Sprites.spriteFor(def.id);
+    if (img) {
+      const s = Math.min((size * 0.96) / img.width, (size * 0.96) / img.height);
+      const w = img.width * s;
+      const h = img.height * s;
+      ctx.drawImage(img, size / 2 - w / 2, size - h - 1, w, h);
+    } else {
+      LW.Sprites.enemy(ctx, {
+        x: size / 2, y: size * 0.82, scale: (size / 80) * (def.isBoss ? 0.7 : 1.2),
+        radius: def.radius, color: def.color, accent: def.accent, shape: def.shape, facing: 1, t: 0,
+      });
+    }
     return c;
   }
 

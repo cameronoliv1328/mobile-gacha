@@ -21,6 +21,8 @@ LW.Hero = class Hero extends LW.Combatant {
       blocks: o.def.class === "Fighter",
       isHero: true,
       scale: 1.2,
+      spriteId: o.def.id,
+      spriteH: 78,
       primary: theme.primary,
       secondary: theme.secondary,
       trim: theme.trim,

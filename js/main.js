@@ -18,6 +18,28 @@ LW.App = class App {
     this.game = new LW.GameInstance();
     this.ui = new LW.UI(this, this.game);
 
+    // Preload painted character sprites; refresh meta thumbnails as they load.
+    LW.assets.sprites = LW.assets.sprites || {};
+    let rerenderQueued = false;
+    const onSpriteLoad = () => {
+      if (this.mode === "meta" && !rerenderQueued) {
+        rerenderQueued = true;
+        requestAnimationFrame(() => {
+          rerenderQueued = false;
+          if (this.mode === "meta") this.ui.render();
+        });
+      }
+    };
+    const loadSprite = (id) => {
+      if (LW.assets.sprites[id]) return;
+      const im = new Image();
+      im.onload = onSpriteLoad;
+      im.src = "assets/sprites/" + id + ".png";
+      LW.assets.sprites[id] = im;
+    };
+    for (const h of LW.HeroData.list) loadSprite(h.id);
+    for (const e of LW.EnemyData.list) loadSprite(e.id);
+
     this.canvas = document.getElementById("stage");
     this.ctx = this.canvas.getContext("2d");
     this.sx = 1;

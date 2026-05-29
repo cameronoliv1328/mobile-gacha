@@ -23,6 +23,8 @@ LW.Combatant = class Combatant {
     this.blocks = !!o.blocks;
     this.isHero = !!o.isHero;
     this.scale = o.scale || (this.isHero ? 1.0 : 0.82);
+    this.spriteId = o.spriteId || null; // painted billboard, if available
+    this.spriteH = o.spriteH || (this.isHero ? 74 : 56); // target logical height
 
     this.primary = o.primary;
     this.secondary = o.secondary;
@@ -155,23 +157,24 @@ LW.Combatant = class Combatant {
 
   render(ctx) {
     if (!this.alive) return;
-    const scale = this.scale * this.battle.map.depthScale(this.y);
-    LW.Sprites.humanoid(ctx, {
-      x: this.x,
-      y: this.y,
-      scale,
-      cls: this.cls,
-      primary: this.primary,
-      secondary: this.secondary,
-      trim: this.trim,
-      facing: this.facing,
-      attacking: this.swingTimer > 0,
-      swing: (1 - Math.max(0, this.swingTimer) / this.swingDur) * Math.PI,
-      isHero: this.isHero,
-      bob: this.bobT,
-    });
+    const depth = this.battle.map.depthScale(this.y);
+    const swing = (1 - Math.max(0, this.swingTimer) / this.swingDur) * Math.PI;
+    const img = LW.Sprites.spriteFor(this.spriteId);
+    let topY;
+    if (img) {
+      const h = this.spriteH * depth;
+      LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y, h, facing: this.facing, bob: this.bobT, attacking: this.swingTimer > 0, swing });
+      topY = this.y - h - 4;
+    } else {
+      const scale = this.scale * depth;
+      LW.Sprites.humanoid(ctx, {
+        x: this.x, y: this.y, scale, cls: this.cls, primary: this.primary, secondary: this.secondary,
+        trim: this.trim, facing: this.facing, attacking: this.swingTimer > 0, swing, isHero: this.isHero, bob: this.bobT,
+      });
+      topY = this.y - 46 * scale;
+    }
     if (this.hp < this.maxHP) {
-      LW.Sprites.healthBar(ctx, this.x, this.y - 46 * scale, this.isHero ? 30 : 22, this.hp / this.maxHP);
+      LW.Sprites.healthBar(ctx, this.x, topY, this.isHero ? 30 : 22, this.hp / this.maxHP);
     }
   }
 };

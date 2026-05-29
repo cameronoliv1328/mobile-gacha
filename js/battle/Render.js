@@ -375,5 +375,31 @@ LW.Sprites = (function () {
     ctx.fill();
   }
 
-  return { shadow, healthBar, humanoid, enemy, projectile, roundRect };
+  /* ---- Painted sprite billboards (with procedural fallback) ----------- */
+
+  // Draws a transparent painted sprite anchored by the feet at (x, y), with a
+  // ground shadow, idle bob, horizontal facing flip and a small attack lunge.
+  function drawSprite(ctx, img, o) {
+    const h = o.h;
+    const w = h * (img.width / img.height);
+    const dir = o.facing < 0 ? -1 : 1;
+    shadow(ctx, o.x, o.y, w * 0.32, h * 0.055);
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    const bob = o.bob != null ? Math.sin(o.bob) * h * 0.012 : 0;
+    const sw = o.attacking ? Math.sin(Math.max(0, Math.min(Math.PI, o.swing || 0))) : 0;
+    ctx.translate(dir * sw * h * 0.07, bob - sw * h * 0.03);
+    const pop = 1 + sw * 0.05;
+    ctx.scale(dir * pop, pop);
+    ctx.drawImage(img, -w / 2, -h, w, h);
+    ctx.restore();
+  }
+
+  function spriteFor(id) {
+    const a = LW.assets && LW.assets.sprites;
+    const img = a && a[id];
+    return img && img.complete && img.naturalWidth ? img : null;
+  }
+
+  return { shadow, healthBar, humanoid, enemy, projectile, roundRect, drawSprite, spriteFor };
 })();

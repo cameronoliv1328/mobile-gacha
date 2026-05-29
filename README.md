@@ -90,6 +90,7 @@ Files map directly onto the blueprints from the build file:
 ```
 index.html              # loads all modules in order; portrait stage
 assets/battlefield.jpg  # hand-painted battlefield illustration (drawn each battle)
+assets/sprites/         # 18 painted, transparent character/enemy sprites
 css/style.css           # stylized-fantasy mobile theme
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
@@ -114,7 +115,7 @@ js/
     Enemy.js            # BP_EnemyBase        - spline movement + bridge blocking
     Turret.js           # BP_TurretBase
     CityWall.js         # BP_CityWall
-    Projectile.js / Effects.js / Render.js   # VFX + procedural sprite painters
+    Projectile.js / Effects.js / Render.js   # VFX + painted sprite billboards (+ fallback)
   ui/UI.js              # all UMG-style screens, HUD, panels, overlays
   main.js               # App: canvas render loop, battle lifecycle
 test/
@@ -184,5 +185,8 @@ same systems, data tables, and naming so the design intent is preserved.
 
 The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
 sets the art direction — misty forest spawn, winding field path, chunky stone wall with two round
-bastions and a central gate, and a cobblestone bridge to the city. Heroes, support units, enemies,
-projectiles and VFX are drawn procedurally on top, with depth-scaled sizing for a 2.5D feel.
+bastions and a central gate, and a cobblestone bridge to the city. The 12 heroes and 6 enemies are
+**painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
+depth-scaled, facing-flipped billboards with idle/attack motion — support units reuse their hero's
+sprite. Projectiles, VFX and the procedural sprite painters remain as an automatic fallback if an
+image is missing, so the game still runs with no assets.
