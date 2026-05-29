@@ -20,12 +20,11 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.wall = new LW.CityWall();
     this.turret = new LW.Turret(this, this.map.getAnchor("Anchor_Turret_Main"));
 
-    // Distances along the path used for blocking/queueing.
-    this.gateDistance = this._distanceAtPoint(this.map.gate.x, this.map.gate.bottom - 10);
-    this.blockDistance = this._distanceAtPoint(
-      this.map.getAnchor("Anchor_Bridge_Hero").x,
-      this.map.getAnchor("Anchor_Bridge_Hero").y + 6
-    );
+    // Distances along the path used for blocking/queueing. The Fighter group
+    // holds the gate apron; enemies stack up the path in front of it.
+    const fa = this.map.getAnchor("Anchor_Bridge_Hero");
+    this.blockDistance = this._distanceAtPoint(fa.x, fa.y + 4);
+    this.gateDistance = Math.max(0, this.blockDistance - 150);
 
     this.heroes = [];
     this.heroesByPos = {};

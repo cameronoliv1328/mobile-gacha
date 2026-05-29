@@ -12,10 +12,15 @@ LW.Sprites = (function () {
 
   function shadow(ctx, x, y, rx, ry) {
     ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = "#10131a";
+    // Soft, layered contact shadow so sprites sit on the painted ground.
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = "#0b0d12";
     ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, TAU);
+    ctx.ellipse(x, y, rx * 1.05, ry * 1.05, 0, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha = 0.16;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx * 1.5, ry * 1.4, 0, 0, TAU);
     ctx.fill();
     ctx.restore();
   }

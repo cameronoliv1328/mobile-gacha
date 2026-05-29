@@ -14,10 +14,11 @@ LW.SaveGame = (function () {
     for (const id of LW.HeroData.starters) heroes[id] = { level: 1 };
     return {
       version: 1,
-      // Welcome bonus so every system is reachable on a fresh save.
+      // Fresh start: a little gold to feel progression, but ZERO summon
+      // currency — crystals are earned from waves/cities.
       gold: 150,
-      regularCrystals: 5,
-      epicCrystals: 2,
+      regularCrystals: 0,
+      epicCrystals: 0,
       epicPity: 0, // non-Legendary Epic-banner pulls since the last Legendary
       unlockedCity: 0, // highest city index the player may enter
       completedCities: new Array(C.CITIES).fill(false),

@@ -20,7 +20,7 @@ LW.Hero = class Hero extends LW.Combatant {
       splash: o.baseStats.splash || (o.def.class === "Fighter" ? 26 : 0),
       blocks: o.def.class === "Fighter",
       isHero: true,
-      scale: 1.05,
+      scale: 1.2,
       primary: theme.primary,
       secondary: theme.secondary,
       trim: theme.trim,
