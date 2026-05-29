@@ -1,0 +1,13 @@
+{
+  "name": "last-wall",
+  "version": "1.0.0",
+  "description": "Last Wall — a portrait, mobile-style stylized-fantasy city-defense gacha game built with dependency-free vanilla JavaScript + HTML5 Canvas.",
+  "private": true,
+  "scripts": {
+    "test": "node test/headless.js",
+    "serve": "npx --yes serve -l 8000 .",
+    "shots": "node test/shots.js"
+  },
+  "keywords": ["game", "tower-defense", "gacha", "canvas", "vanilla-js"],
+  "license": "MIT"
+}

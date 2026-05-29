@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Screenshot tool output (curated shots live in docs/screenshots/)
+/screenshots/
+
+# OS / editor cruft
+.DS_Store
+*.log
+.vscode/
+.idea/
