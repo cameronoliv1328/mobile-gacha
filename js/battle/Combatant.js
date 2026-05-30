@@ -35,8 +35,9 @@ LW.Combatant = class Combatant {
     this.facing = -1;
     this.attackCD = Math.random() * this.attackInterval;
     this.swingTimer = 0;
-    this.swingDur = 0.22;
+    this.swingDur = 0.26;
     this.bobT = Math.random() * 6;
+    this.animT = Math.random() * 3; // animation clock (seconds)
     this.target = null;
 
     // Ability / synergy effects (configured by Hero.applyBuffs).
@@ -67,6 +68,7 @@ LW.Combatant = class Combatant {
   update(dt) {
     if (!this.alive) return;
     this.bobT += dt * 4;
+    this.animT += dt;
     if (this.swingTimer > 0) this.swingTimer -= dt;
     if (this._atkBuffT > 0) {
       this._atkBuffT -= dt;
@@ -163,7 +165,10 @@ LW.Combatant = class Combatant {
     let topY;
     if (img) {
       const h = this.spriteH * depth;
-      LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y, h, facing: this.facing, bob: this.bobT, attacking: this.swingTimer > 0, swing });
+      const tr = LW.Anim.heroTransform({
+        t: this.animT, facing: this.facing, attacking: this.swingTimer > 0, swingT: this.swingTimer, swingDur: this.swingDur, ranged: this.ranged,
+      });
+      LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y, h, facing: this.facing, tr });
       topY = this.y - h - 4;
     } else {
       const scale = this.scale * depth;

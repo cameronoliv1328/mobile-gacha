@@ -139,6 +139,7 @@ const FILES = [
   "js/core/GameInstance.js",
   "js/battle/Spline.js",
   "js/battle/Render.js",
+  "js/battle/Anim.js",
   "js/battle/Effects.js",
   "js/battle/Projectile.js",
   "js/battle/Combatant.js",

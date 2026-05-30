@@ -38,6 +38,8 @@ LW.Enemy = class Enemy {
     this.slowT = 0;
     this.burnDps = 0;
     this.burnT = 0;
+    this.attackAnimT = 0;
+    this.attackAnimDur = 0.28;
 
     const p = battle.spline.pointAt(0);
     this.x = p.x;
@@ -48,6 +50,7 @@ LW.Enemy = class Enemy {
     if (!this.alive) return;
     this.t += dt;
     this.attackCD -= dt;
+    if (this.attackAnimT > 0) this.attackAnimT -= dt;
 
     // Status effects.
     if (this.slowT > 0) {
@@ -84,6 +87,7 @@ LW.Enemy = class Enemy {
         if (this.attackCD <= 0) {
           this.target.applyDamage(this.atk, this);
           this.attackCD = this.attackInterval;
+          this.attackAnimT = this.attackAnimDur;
           this.battle.addEffect(
             new LW.Effect("spark", { x: this.target.x, y: this.target.y - 18, color: "#ff6a4a", spread: 11, life: 0.2, seed: Math.random() * 6 })
           );
@@ -167,7 +171,10 @@ LW.Enemy = class Enemy {
     let topY, halfW;
     if (img) {
       const h = this.spriteH * depth;
-      LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y, h, facing: this.facing, bob: this.t * 7 });
+      const tr = LW.Anim.enemyTransform({
+        t: this.t, facing: this.facing, moving: this.state === "move", attacking: this.attackAnimT > 0, attackT: this.attackAnimT, attackDur: this.attackAnimDur,
+      });
+      LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y, h, facing: this.facing, tr });
       halfW = (h * (img.width / img.height)) / 2;
       topY = this.y - h - 4;
     } else {

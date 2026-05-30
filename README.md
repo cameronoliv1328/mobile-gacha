@@ -115,6 +115,7 @@ js/
     Enemy.js            # BP_EnemyBase        - spline movement + bridge blocking
     Turret.js           # BP_TurretBase
     CityWall.js         # BP_CityWall
+    Anim.js             # procedural 2-3 frame idle/walk/attack sprite animation
     Projectile.js / Effects.js / Render.js   # VFX + painted sprite billboards (+ fallback)
   ui/UI.js              # all UMG-style screens, HUD, panels, overlays
   main.js               # App: canvas render loop, battle lifecycle
@@ -187,6 +188,9 @@ The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantas
 sets the art direction — misty forest spawn, winding field path, chunky stone wall with two round
 bastions and a central gate, and a cobblestone bridge to the city. The 12 heroes and 6 enemies are
 **painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
-depth-scaled, facing-flipped billboards with idle/attack motion — support units reuse their hero's
-sprite. Projectiles, VFX and the procedural sprite painters remain as an automatic fallback if an
+depth-scaled, facing-flipped billboards. Each gets **simple 2-3 frame animation** (`Anim.js`) —
+a stepped idle breathe, a walk waddle (moving enemies) and a 3-frame wind-up → strike/cast →
+recover attack — synthesized procedurally from the single painted frame (squash/stretch + lean +
+lunge), so there's no inter-frame jitter and no extra art needed. Support units reuse their hero's
+sprite. Projectiles, VFX and the procedural sprite painters remain an automatic fallback if an
 image is missing, so the game still runs with no assets.
