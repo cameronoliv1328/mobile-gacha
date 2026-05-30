@@ -127,6 +127,28 @@ LW.Config = {
     },
   },
 
+  /* ---- Combat 2.0: damage types, affinities, status combos ------------ */
+  COMBAT: {
+    // Class -> damage type. A hero's element comes from the hero data.
+    classDamageType: { Fighter: "physical", Archer: "physical", Mage: "magic" },
+    weakMult: 1.5, // element weakness
+    resistMult: 0.6, // element resistance
+    weakTypeMult: 1.5, // physical/magic weakness
+    // Element -> status applied on hit (drives the combo system).
+    elementStatus: { Ice: "chill", Fire: "burn", Nature: "wet", Storm: "shock", Neutral: null },
+    status: {
+      burn: { dur: 3.0, dps: 0.2 }, // dps = fraction of the hit's damage per second
+      chill: { dur: 2.0, slow: 0.68, freezeStacks: 3 }, // 3 chills (or chill on wet) -> frozen
+      frozen: { dur: 1.6, bonus: 1.25 }, // rooted; takes +25% damage
+      wet: { dur: 4.0 },
+      shock: { dur: 3.0, chainRadius: 72, chainMult: 0.5 },
+      oil: { dur: 5.0 },
+    },
+    shatter: { mult: 1.7 }, // physical hit on a frozen enemy (consumes frozen)
+    ignite: { mult: 1.3, radius: 72 }, // fire hit on an oiled enemy (AoE)
+    conduct: { bonus: 1.4 }, // storm hit on a wet enemy (stronger + chains)
+  },
+
   /* ---- Turret --------------------------------------------------------- */
   TURRET: {
     baseDamage: 18,

@@ -21,6 +21,8 @@ LW.SupportUnit = class SupportUnit extends LW.Combatant {
       scale: 0.92,
       spriteId: o.parent ? o.parent.heroId : null,
       spriteH: 58,
+      damageType: o.parent ? o.parent.damageType : "physical",
+      element: o.parent ? o.parent.element : "Neutral",
       primary: o.theme.primary,
       secondary: o.theme.secondary,
       trim: o.theme.trim,

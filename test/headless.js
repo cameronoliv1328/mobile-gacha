@@ -266,6 +266,72 @@ assert(attuned3.atkMult > fire3.atkMult, "Attunement (Tier I) increases synergy 
 console.log("  abilities + synergy ok");
 
 /* ===================================================================== *
+ *  Combat 2.0 — affinities, status combos, archetypes
+ * ===================================================================== */
+console.log("— combat 2.0 —");
+LW.SaveGame.clear();
+const cg = new LW.GameInstance();
+const cb = new LW.BattleManager(cg, 3);
+cb.start();
+const mk = (id) => new LW.Enemy(cb, LW.EnemyData.byId(id), 1);
+
+// Elemental weakness / resistance.
+let e = mk("slime"); let h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "magic", element: "Fire" }); // slime weak Fire
+assert(Math.abs(h - e.hp - 150) <= 2, "weakness ~x1.5 (" + (h - e.hp) + ")");
+e = mk("slime"); h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "physical", element: "Nature" }); // slime resists Nature
+assert(Math.abs(h - e.hp - 60) <= 2, "resistance ~x0.6 (" + (h - e.hp) + ")");
+
+// Armor vs damage type.
+e = mk("knight"); h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "physical", element: "Neutral" });
+assert(h - e.hp < 45, "armored knight shrugs physical (" + (h - e.hp) + ")");
+e = mk("knight"); h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "magic", element: "Neutral" });
+assert(h - e.hp > 140, "armored knight weak to magic (" + (h - e.hp) + ")");
+
+// Status combos.
+e = mk("goblin");
+e.applyStatus("wet", 10);
+e.applyStatus("chill", 10);
+assert(e.isFrozen(), "wet + chill => frozen");
+cb.damageEnemy(e, 40, null, { type: "physical", element: "Neutral" });
+assert(!e.isFrozen(), "physical hit shatters frozen");
+e = mk("goblin");
+e.applyStatus("wet", 10);
+e.applyStatus("burn", 100);
+assert(e.burnT === 0, "wet douses fire");
+e = mk("harpy"); // element Storm -> immune to its own status (shock)
+e.applyStatus("shock", 50);
+assert(e.shockT === 0, "enemy immune to its own element status");
+
+// Flying bypasses the Fighter; only ranged can hit it.
+const fly = mk("harpy");
+assert(fly.flying && !fly.blockable, "harpy flies and is unblockable");
+cb.enemies.length = 0;
+cb.enemies.push(fly);
+fly.splineDistance = cb.blockDistance;
+fly._syncPos();
+assert(cb.bestTargetInRange(fly.x, fly.y, 220, { melee: true }) !== fly, "melee cannot target a flyer");
+assert(cb.bestTargetInRange(fly.x, fly.y, 220, {}) === fly, "ranged can target a flyer");
+
+// Splitter spawns slimelets on death.
+cb.enemies.length = 0;
+const sp = mk("slime");
+cb.enemies.push(sp);
+sp.die();
+assert(cb.enemies.some((x) => x.enemyId === "slimelet"), "slime splits into slimelets");
+
+// Shield absorbs before HP.
+e = mk("shieldbearer");
+assert(e.shieldHP > 0, "shieldbearer has a shield");
+const sh0 = e.shieldHP;
+cb.damageEnemy(e, 30, null, { type: "physical", element: "Neutral" });
+assert(e.shieldHP < sh0 && e.hp === e.maxHP, "physical chips shield, not HP");
+console.log("  combat 2.0 ok");
+
+/* ===================================================================== *
  *  TIER 2 — Full battle simulation
  * ===================================================================== */
 console.log("— battle simulation —");

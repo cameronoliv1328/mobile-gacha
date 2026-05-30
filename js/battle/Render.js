@@ -384,7 +384,7 @@ LW.Sprites = (function () {
     const w = h * (img.width / img.height);
     const dir = o.facing < 0 ? -1 : 1;
     const tr = o.tr || { ox: 0, oy: 0, sx: 1, sy: 1, rot: 0 };
-    shadow(ctx, o.x, o.y, w * 0.32, h * 0.055);
+    shadow(ctx, o.x, o.shadowY != null ? o.shadowY : o.y, w * 0.32, h * 0.055);
     ctx.save();
     ctx.translate(o.x, o.y);
     ctx.scale(dir, 1); // face: now +x points "forward"

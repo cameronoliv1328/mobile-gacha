@@ -30,6 +30,9 @@ LW.Combatant = class Combatant {
     this.secondary = o.secondary;
     this.trim = o.trim;
     this.projColor = o.projColor || o.trim;
+    this.damageType = o.damageType || "physical";
+    this.element = o.element || "Neutral";
+    this.targetPriority = o.targetPriority || "first";
 
     this.alive = true;
     this.facing = -1;
@@ -76,7 +79,7 @@ LW.Combatant = class Combatant {
     }
     this.attackCD -= dt;
 
-    this.target = this.battle.bestTargetInRange(this.x, this.y, this.range);
+    this.target = this.battle.bestTargetInRange(this.x, this.y, this.range, { melee: !this.ranged, priority: this.targetPriority });
     if (this.target) {
       this.facing = this.target.x >= this.x ? 1 : -1;
       if (this.attackCD <= 0) {
@@ -110,15 +113,18 @@ LW.Combatant = class Combatant {
           splash: this.splash,
           style: this.cls === "Archer" ? "arrow" : "magic",
           color: this.projColor,
+          type: this.damageType,
+          element: this.element,
           slow: status.slow,
           burn: status.burn,
         });
       }
     } else {
       // Melee swing: hit the target plus a small cleave around it.
-      this.battle.damageEnemy(t, dmg, this, status);
+      const atk = { type: this.damageType, element: this.element, status };
+      this.battle.damageEnemy(t, dmg, this, atk);
       if (this.splash > 0) {
-        this.battle.damageEnemiesInRadius(t.x, t.y, this.splash, dmg * 0.6, this, t, status);
+        this.battle.damageEnemiesInRadius(t.x, t.y, this.splash, dmg * 0.6, this, t, atk);
       }
       this.battle.addEffect(
         new LW.Effect("spark", { x: t.x, y: t.y - 8, color: this.trim, spread: 13, life: 0.22, seed: Math.random() * 6 })

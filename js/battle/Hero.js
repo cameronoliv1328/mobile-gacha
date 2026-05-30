@@ -23,6 +23,8 @@ LW.Hero = class Hero extends LW.Combatant {
       scale: 1.2,
       spriteId: o.def.id,
       spriteH: 78,
+      damageType: LW.Config.COMBAT.classDamageType[o.def.class] || "physical",
+      element: o.def.element || "Neutral",
       primary: theme.primary,
       secondary: theme.secondary,
       trim: theme.trim,
@@ -134,7 +136,7 @@ LW.Hero = class Hero extends LW.Combatant {
   _castUlt(tgt) {
     const col = this.ult.type === "meteor" ? "#ff8a3a" : this.trim;
     const dmg = this.effATK() * this.ult.mult;
-    this.battle.damageEnemiesInRadius(tgt.x, tgt.y, this.ult.radius, dmg, this, null, this._status());
+    this.battle.damageEnemiesInRadius(tgt.x, tgt.y, this.ult.radius, dmg, this, null, { type: this.damageType, element: this.element, status: this._status() });
     this.battle.addEffect(new LW.Effect("ring", { x: tgt.x, y: tgt.y, radius: this.ult.radius, color: col, width: 5, life: 0.5 }));
     this.battle.addEffect(new LW.Effect("flash", { x: tgt.x, y: tgt.y, radius: this.ult.radius * 0.6, color: col, life: 0.32 }));
     for (let i = 0; i < 8; i++) {

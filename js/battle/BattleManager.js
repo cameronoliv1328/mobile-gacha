@@ -199,25 +199,36 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     return best;
   }
 
-  // Prefer the most advanced enemy (closest to breaching) within range.
-  bestTargetInRange(x, y, range) {
+  // Find a target in range. opts: { melee (can't hit flyers), priority }.
+  bestTargetInRange(x, y, range, opts) {
+    opts = opts || {};
     const r2 = range * range;
-    let best = null;
-    let bestAdv = -1;
+    const cand = [];
     for (const e of this.enemies) {
-      if (!e.alive) continue;
-      if (LW.util.dist2(x, y, e.x, e.y) > r2) continue;
-      if (e.splineDistance > bestAdv) {
-        bestAdv = e.splineDistance;
-        best = e;
-      }
+      if (!e.alive || !e.targetable) continue;
+      if (opts.melee && e.flying) continue;
+      if (LW.util.dist2(x, y, e.x, e.y) <= r2) cand.push(e);
+    }
+    if (!cand.length) return null;
+    return this._byPriority(cand, opts.priority);
+  }
+
+  _byPriority(cand, mode) {
+    if (mode === "flying") { const p = cand.filter((e) => e.flying); if (p.length) cand = p; }
+    else if (mode === "support") { const p = cand.filter((e) => e.healer || e.bannerman); if (p.length) cand = p; }
+    else if (mode === "armored") { const p = cand.filter((e) => e.armored || e.shieldHP > 0); if (p.length) cand = p; }
+    let best = cand[0];
+    for (const e of cand) {
+      if (mode === "strong") { if (e.maxHP > best.maxHP) best = e; }
+      else if (mode === "weak") { if (e.hp < best.hp) best = e; }
+      else if (e.splineDistance > best.splineDistance) best = e; // default: most advanced
     }
     return best;
   }
 
   bestTargetsInRange(x, y, range, n) {
     const r2 = range * range;
-    const inRange = this.enemies.filter((e) => e.alive && LW.util.dist2(x, y, e.x, e.y) <= r2);
+    const inRange = this.enemies.filter((e) => e.alive && e.targetable && LW.util.dist2(x, y, e.x, e.y) <= r2);
     inRange.sort((a, b) => b.splineDistance - a.splineDistance);
     return inRange.slice(0, n);
   }
@@ -227,7 +238,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     let best = null;
     let bestD = m2;
     for (const e of this.enemies) {
-      if (!e.alive) continue;
+      if (!e.alive || !e.targetable) continue;
       const d = LW.util.dist2(x, y, e.x, e.y);
       if (d <= bestD) {
         bestD = d;
@@ -237,37 +248,133 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     return best;
   }
 
-  damageEnemy(enemy, dmg, source, status) {
+  /* Resolve a hit: affinity multipliers, shield, frozen-shatter, status combos.
+   * atk = { type:'physical'|'magic', element, status:{slow,burn}, applyStatus }. */
+  damageEnemy(enemy, rawDmg, source, atk) {
     if (!enemy || !enemy.alive) return;
-    const amount = Math.max(1, Math.round(dmg));
-    enemy.applyDamage(amount, source);
-    this._damageText(enemy.x, enemy.y - enemy.radius * 2.4, amount);
-    if (status && enemy.alive) {
-      if (status.slow) enemy.applySlow(status.slow.factor, status.slow.dur);
-      if (status.burn) enemy.applyBurn(amount * status.burn.fraction, status.burn.dur);
+    atk = atk || {};
+    const C = LW.Config.COMBAT;
+    const type = atk.type || "physical";
+    const element = atk.element || "Neutral";
+    let mult = type === "magic" ? 1 - (enemy.magicResist || 0) : 1 - (enemy.physResist || 0);
+    let flavor = "normal";
+    if (enemy.weakType === type) { mult *= C.weakTypeMult; flavor = "weak"; }
+    if (element !== "Neutral") {
+      if (enemy.weakElement === element) { mult *= C.weakMult; flavor = "weak"; }
+      else if (enemy.resistElement === element) { mult *= C.resistMult; flavor = "resist"; }
+    }
+    if (enemy.isFrozen()) mult *= C.status.frozen.bonus;
+    let shatter = false;
+    if (enemy.isFrozen() && type === "physical") { mult *= C.shatter.mult; shatter = true; enemy.frozenT = 0; flavor = "shatter"; }
+
+    let amount = Math.max(1, Math.round(rawDmg * mult));
+
+    // Frontal shield absorbs first; magic half-pierces it.
+    if (enemy.shieldHP > 0) {
+      if (type === "magic") {
+        const toShield = amount * 0.5;
+        if (toShield >= enemy.shieldHP) { amount -= enemy.shieldHP * 2; enemy.shieldHP = 0; }
+        else { enemy.shieldHP -= toShield; amount = Math.round(amount * 0.5); }
+      } else {
+        if (amount >= enemy.shieldHP) { amount -= enemy.shieldHP; enemy.shieldHP = 0; this.addEffect(new LW.Effect("ring", { x: enemy.x, y: enemy.y - enemy.radius, radius: 26, color: "#bcd0ff", width: 3, life: 0.3 })); }
+        else { enemy.shieldHP -= amount; amount = 0; }
+      }
+      amount = Math.max(0, Math.round(amount));
+    }
+
+    if (amount > 0) {
+      enemy.applyDamage(amount, source);
+      this._damageText(enemy.x, enemy.y - enemy.radius * 2.4, amount, flavor);
+    }
+    if (!enemy.alive) return;
+
+    if (shatter) this.addEffect(new LW.Effect("ring", { x: enemy.x, y: enemy.y - enemy.radius, radius: 30, color: "#bfe9ff", width: 3, life: 0.3 }));
+
+    const ref = amount || Math.max(1, Math.round(rawDmg * mult));
+    if (atk.applyStatus !== false && element !== "Neutral") this._applyElementStatus(enemy, element, ref, source);
+    if (atk.status) {
+      if (atk.status.slow) enemy.applySlow(atk.status.slow.factor, atk.status.slow.dur);
+      if (atk.status.burn) enemy.applyBurn(ref * atk.status.burn.fraction, atk.status.burn.dur);
     }
   }
 
-  damageEnemiesInRadius(cx, cy, radius, dmg, source, exclude, status) {
+  // Element status application with combos (ignite, conduct chain).
+  _applyElementStatus(enemy, element, hitDmg, source) {
+    const C = LW.Config.COMBAT;
+    if (element === "Fire" && enemy.oilT > 0) {
+      enemy.oilT = 0;
+      this.addEffect(new LW.Effect("flash", { x: enemy.x, y: enemy.y - enemy.radius, radius: C.ignite.radius, color: "#ff8a3a", life: 0.3 }));
+      this.addEffect(new LW.Effect("ring", { x: enemy.x, y: enemy.y - enemy.radius, radius: C.ignite.radius, color: "#ff8a3a", width: 4, life: 0.35 }));
+      this.damageEnemiesInRadius(enemy.x, enemy.y, C.ignite.radius, hitDmg * C.ignite.mult, source, null, { type: "magic", element: "Fire", applyStatus: false });
+    }
+    if (element === "Storm" && enemy.wetT > 0) {
+      const ch = C.status.shock;
+      this.damageEnemiesInRadius(enemy.x, enemy.y, ch.chainRadius, hitDmg * ch.chainMult, source, enemy, { type: "magic", element: "Storm", applyStatus: false });
+      this.addEffect(new LW.Effect("ring", { x: enemy.x, y: enemy.y - enemy.radius, radius: ch.chainRadius, color: "#cdb8ff", width: 2, life: 0.25 }));
+    }
+    const status = C.elementStatus[element];
+    if (status) enemy.applyStatus(status, hitDmg);
+  }
+
+  damageEnemiesInRadius(cx, cy, radius, dmg, source, exclude, atk) {
     const r2 = radius * radius;
     for (const e of this.enemies) {
-      if (!e.alive || e === exclude) continue;
-      if (LW.util.dist2(cx, cy, e.x, e.y) <= r2) this.damageEnemy(e, dmg, source, status);
+      if (!e.alive || e === exclude || !e.targetable) continue;
+      if (LW.util.dist2(cx, cy, e.x, e.y) <= r2) this.damageEnemy(e, dmg, source, atk);
     }
   }
 
-  _damageText(x, y, amount) {
+  // Healer aura: restore HP to wounded allies nearby.
+  healEnemiesNear(x, y, radius, frac, source) {
+    const r2 = radius * radius;
+    for (const e of this.enemies) {
+      if (!e.alive || e === source) continue;
+      if (e.hp < e.maxHP && LW.util.dist2(x, y, e.x, e.y) <= r2) {
+        e.hp = Math.min(e.maxHP, e.hp + e.maxHP * frac);
+        this.addEffect(new LW.Effect("text", { x: e.x, y: e.y - e.radius * 2.4, text: "+", color: "#8af0a8", size: 12, vy: -18, life: 0.5 }));
+      }
+    }
+  }
+
+  // Splitter: spawn smaller enemies where the parent died.
+  spawnSplit(parent, defId, count) {
+    const def = LW.EnemyData.byId(defId);
+    if (!def) return;
+    for (let i = 0; i < count; i++) {
+      const e = new LW.Enemy(this, def, parent.scale);
+      e.splineDistance = Math.max(0, parent.splineDistance - 6 - i * 4);
+      e._syncPos();
+      e.x += (i - (count - 1) / 2) * 14;
+      this.enemies.push(e);
+    }
+  }
+
+  // Per-frame enemy buffs (bannerman aura). Berserker re-applies in Enemy.update.
+  _enemySupportPass() {
+    const banners = [];
+    for (const e of this.enemies) {
+      e._buffSpeed = 1;
+      e._buffAtk = 1;
+      if (e.alive && e.bannerman && e.targetable) banners.push(e);
+    }
+    if (!banners.length) return;
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      for (const b of banners) {
+        if (b === e) continue;
+        if (LW.util.dist2(e.x, e.y, b.x, b.y) <= b.bannerman.radius * b.bannerman.radius) {
+          e._buffSpeed = Math.max(e._buffSpeed, b.bannerman.speedMult);
+          e._buffAtk = Math.max(e._buffAtk, b.bannerman.atkMult);
+        }
+      }
+    }
+  }
+
+  _damageText(x, y, amount, flavor) {
+    const col = flavor === "weak" ? "#ffd766" : flavor === "resist" ? "#9fb0c4" : flavor === "shatter" ? "#bfe9ff" : "#ffffff";
+    const big = flavor === "weak" || flavor === "shatter" || amount >= 80;
     this.effects.push(
-      new LW.Effect("text", {
-        x: x + (Math.random() * 10 - 5),
-        y,
-        text: String(amount),
-        color: amount >= 60 ? "#ffd766" : "#ffffff",
-        size: amount >= 60 ? 15 : 12,
-        bold: amount >= 60,
-        vy: -30,
-        life: 0.6,
-      })
+      new LW.Effect("text", { x: x + (Math.random() * 10 - 5), y, text: String(amount), color: col, size: big ? 15 : 12, bold: big, vy: -30, life: 0.6 })
     );
   }
 
@@ -291,7 +398,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       return;
     }
     const band = this.gateDistance - 16;
-    const queued = this.enemies.filter((e) => e.alive && e.splineDistance >= band);
+    const queued = this.enemies.filter((e) => e.alive && e.blockable && e.splineDistance >= band);
     queued.sort((a, b) => b.splineDistance - a.splineDistance);
     const spacing = 18;
     for (let i = 0; i < queued.length; i++) {
@@ -326,6 +433,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
         const def = LW.EnemyData.byId(s.enemyId);
         if (def) this.enemies.push(new LW.Enemy(this, def, this.waveScale));
       }
+      this._enemySupportPass();
       this._updateBlocking();
       for (const e of this.enemies) e.update(dt);
     }
