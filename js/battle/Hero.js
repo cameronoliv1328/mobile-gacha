@@ -40,6 +40,9 @@ LW.Hero = class Hero extends LW.Combatant {
     this.abilityMods =
       o.abilityMods || { atkMult: 1, hpMult: 1, asMult: 1, rangeMult: 1, splashMult: 1, extraProjectiles: 0, reflect: 0, surviveOnce: false, attuned: false, slowOnHit: null, ult: null };
     this.synergyMods = null;
+    this.skillDef = LW.Config.ACTIVE_SKILLS[o.def.class] || null;
+    this.skillCD = 0;
+    this.skillTier3 = false;
     this.supportUnits = [];
   }
 
@@ -92,12 +95,7 @@ LW.Hero = class Hero extends LW.Combatant {
     this.regen = sm.regen || 0;
     this.slowOnHit = am.slowOnHit || sm.slowOnHit || null;
     this.burnOnHit = sm.burnOnHit || null;
-    this.ult = am.ult || null;
-    if (this.ult) {
-      if (this.ultCD == null) this.ultCD = this.ult.interval * 0.6;
-    } else {
-      this.ultCD = null;
-    }
+    this.skillTier3 = !!am.ult; // tier-3 duplicate ability upgrades the skill
 
     for (const u of this.supportUnits) {
       u.refresh(this.maxHP, this.atk);
@@ -118,41 +116,67 @@ LW.Hero = class Hero extends LW.Combatant {
       this.hp = Math.min(this.maxHP, this.hp + this.maxHP * this.regen * dt);
     }
 
-    // Tier-III signature ultimate (Rain of Arrows / Cataclysm).
-    if (this.ult) {
-      this.ultCD -= dt;
-      if (this.ultCD <= 0) {
-        const tgt = this.battle.bestTargetInRange(this.x, this.y, this.range);
-        if (tgt) {
-          this.ultCD = this.ult.interval;
-          this._castUlt(tgt);
-        } else {
-          this.ultCD = 0.25; // wait for a target
-        }
+    if (this.skillCD > 0) this.skillCD -= dt;
+  }
+
+  /* ---- Active skill --------------------------------------------------- */
+
+  get skillReady() {
+    return this.alive && this.skillCD <= 0;
+  }
+
+  // Merged skill params (tier-3 duplicate ability overrides base).
+  skillParams() {
+    const d = this.skillDef;
+    if (!d) return null;
+    return this.skillTier3 ? Object.assign({}, d, d.tier3) : d;
+  }
+
+  skillRange() {
+    const p = this.skillParams();
+    return p && p.aim === "target" ? p.range : 0;
+  }
+
+  // Cast at a world point (Fighter ignores it and self-centres). Returns ok.
+  castSkill(x, y) {
+    if (!this.skillReady) return false;
+    const p = this.skillParams();
+    if (!p) return false;
+    const cx = p.aim === "self" ? this.x : x;
+    const cy = p.aim === "self" ? this.y : y;
+    const dmg = this.effATK() * p.dmgMult;
+    const atk = { type: this.damageType, element: this.element, status: this._status() };
+    const volleys = p.volleys || 1;
+    for (let i = 0; i < volleys; i++) {
+      this.battle.damageEnemiesInRadius(cx, cy, p.radius, dmg / volleys, this, null, atk);
+    }
+    if (p.knockback) this.battle.knockbackEnemies(cx, cy, p.radius, p.knockback);
+    if (p.slow) {
+      for (const e of this.battle.enemies) {
+        if (e.alive && LW.util.dist2(cx, cy, e.x, e.y) <= p.radius * p.radius) e.applySlow(p.slow.factor, p.slow.dur);
       }
     }
+    this.skillCD = p.cooldown;
+    this._skillVfx(cx, cy, p);
+    return true;
   }
 
-  _castUlt(tgt) {
-    const col = this.ult.type === "meteor" ? "#ff8a3a" : this.trim;
-    const dmg = this.effATK() * this.ult.mult;
-    this.battle.damageEnemiesInRadius(tgt.x, tgt.y, this.ult.radius, dmg, this, null, { type: this.damageType, element: this.element, status: this._status() });
-    this.battle.addEffect(new LW.Effect("ring", { x: tgt.x, y: tgt.y, radius: this.ult.radius, color: col, width: 5, life: 0.5 }));
-    this.battle.addEffect(new LW.Effect("flash", { x: tgt.x, y: tgt.y, radius: this.ult.radius * 0.6, color: col, life: 0.32 }));
-    for (let i = 0; i < 8; i++) {
-      this.battle.addEffect(new LW.Effect("spark", { x: tgt.x, y: tgt.y, color: col, spread: this.ult.radius * 0.8, count: 8, life: 0.5, seed: i }));
+  _skillVfx(cx, cy, p) {
+    const col = p.color || this.trim;
+    this.battle.addEffect(new LW.Effect("ring", { x: cx, y: cy, radius: p.radius, color: col, width: 5, life: 0.5 }));
+    this.battle.addEffect(new LW.Effect("flash", { x: cx, y: cy, radius: p.radius * 0.6, color: col, life: 0.32 }));
+    for (let i = 0; i < 10; i++) {
+      this.battle.addEffect(new LW.Effect("spark", { x: cx, y: cy, color: col, spread: p.radius * 0.8, count: 10, life: 0.5, seed: i }));
     }
-    this.battle.addEffect(
-      new LW.Effect("text", { x: tgt.x, y: tgt.y - 30, text: this.ult.type === "meteor" ? "CATACLYSM" : "VOLLEY", color: col, size: 13, bold: true, vy: -20, life: 0.9 })
-    );
+    this.battle.addEffect(new LW.Effect("text", { x: cx, y: cy - 30, text: this.skillDef.name + "!", color: col, size: 14, bold: true, vy: -20, life: 0.9 }));
   }
 
-  // Reset per-wave state (survive-once, surge, ult cooldown).
+  // Reset per-wave state (survive-once, surge, skill cooldown).
   resetForWave() {
     this._survived = false;
     this.atkBuff = 1;
     this._atkBuffT = 0;
-    this.ultCD = this.ult ? this.ult.interval * 0.6 : null;
+    this.skillCD = 0;
   }
 
   healFull() {

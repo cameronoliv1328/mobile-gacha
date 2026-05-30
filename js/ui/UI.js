@@ -639,10 +639,29 @@ LW.UI = class UI {
       cityHpText,
     ]);
     const synergy = this.el("div", { class: "hud-synergy", style: "display:none" });
+    const skillBar = this.el("div", { class: "skill-bar" });
     hud.appendChild(top);
     hud.appendChild(cityHp);
     hud.appendChild(synergy);
-    this.hudRefs = { wave, cityHpFill, cityHpText, gold, speedBtn, pauseBtn, synergy, synShown: false };
+    hud.appendChild(skillBar);
+    this.hudRefs = { wave, cityHpFill, cityHpText, gold, speedBtn, pauseBtn, synergy, synShown: false, skillBar, skillBtns: {}, skillsBuilt: false };
+  }
+
+  // One tap-to-cast button per deployed hero (built once heroes exist).
+  _buildSkillBar() {
+    const bar = LW.util.clear(this.hudRefs.skillBar);
+    this.hudRefs.skillBtns = {};
+    for (const s of this.battle.heroSkills()) {
+      const def = LW.HeroData.byId(s.heroId);
+      const btn = this.el("button", { class: "skill-btn", title: s.name, onclick: () => this.app.tapSkill(s.pos) });
+      btn.appendChild(this.heroThumb(def, 52));
+      const overlay = this.el("div", { class: "skill-cd" });
+      btn.appendChild(overlay);
+      btn.appendChild(this.el("div", { class: "skill-name", text: s.name }));
+      bar.appendChild(btn);
+      this.hudRefs.skillBtns[s.pos] = { btn, overlay };
+    }
+    this.hudRefs.skillsBuilt = true;
   }
 
   updateBattleHUD() {
@@ -667,6 +686,21 @@ LW.UI = class UI {
       this.hudRefs.synergy.style.display = "";
       this.hudRefs.synergy.appendChild(this.el("span", { class: "hud-syn-ic", style: "color:" + E.color, text: E.icon }));
       this.hudRefs.synergy.appendChild(this.el("span", { text: " " + label }));
+    }
+
+    // Skill bar: build once heroes are deployed, then update cooldowns.
+    if (!this.hudRefs.skillsBuilt) {
+      if (this.battle.heroSkills().length) this._buildSkillBar();
+    } else {
+      for (const s of this.battle.heroSkills()) {
+        const ref = this.hudRefs.skillBtns[s.pos];
+        if (!ref) continue;
+        const frac = s.cooldown > 0 ? s.cd / s.cooldown : 0;
+        ref.overlay.style.height = Math.max(0, Math.min(1, frac)) * 100 + "%";
+        ref.btn.classList.toggle("ready", s.ready);
+        ref.btn.classList.toggle("dead", !s.alive);
+        ref.btn.classList.toggle("armed", this.app.armedSkill === s.pos);
+      }
     }
   }
 

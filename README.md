@@ -13,9 +13,9 @@ This repository implements the [`Last Wall` design/build file](#design-source) a
 game** — a single-page, dependency-free app using **vanilla JavaScript + HTML5 Canvas**. The code
 is organized to mirror the Unreal Engine blueprint structure described in the build file.
 
-| Menu | Battlefield | Duplicate Abilities | Element Synergy | Upgrades | Summon |
+| Menu | Battle + Skills | Combat 2.0 | Abilities | Synergy | Summon |
 |---|---|---|---|---|---|
-| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![abilities](docs/screenshots/abilities.jpg) | ![synergy](docs/screenshots/synergy.jpg) | ![upgrade](docs/screenshots/upgrade.jpg) | ![summon](docs/screenshots/summon.jpg) |
+| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![combat](docs/screenshots/combat.jpg) | ![abilities](docs/screenshots/abilities.jpg) | ![synergy](docs/screenshots/synergy.jpg) | ![summon](docs/screenshots/summon.jpg) |
 
 ---
 
@@ -81,6 +81,27 @@ The two systems interlock as the build file describes: a hero's **first duplicat
 "Attunement"**, which **empowers its synergy contribution** — a fully-attuned mono-element team gets
 a stronger synergy bonus.
 
+## Combat depth (2.0)
+
+Clearing a wave is a tactical read, not just an auto-battle:
+
+- **Damage types + elemental affinities.** Hits are physical or magic and carry the hero's element.
+  Enemies have armor/wards, an element weakness (×1.5) / resistance (×0.6) and status immunities —
+  so team/element choice is a per-city puzzle. Damage numbers are colour-coded by effectiveness.
+- **Status combos.** Ice chills → **freezes** (3 stacks, or instantly on a Wet target); a physical
+  hit **shatters** frozen enemies for bonus damage; Fire **burns** (and **ignites** oiled targets for
+  AoE); Water **douses** fire; Storm **shocks** and **chains** through Wet enemies. Mixing elements on
+  a team unlocks the combos.
+- **Enemy archetypes that demand counters.** **Flying** (Harpy — bypasses the Fighter, ranged-only),
+  **Armored** (Frost Knight — weak to magic), **Shielded** (magic half-pierces the shield), **Healer**
+  (Necromancer — focus-kill it), **Splitter** (Slime → slimelets), **Burrower** (Tunneler skips the
+  field), **Berserker** (Wolf/Ogre enrage), **Bannerman** (Warboss buffs nearby). Each is introduced
+  city by city to teach its counter.
+- **Per-hero active skills.** Every deployed hero has a tap-aimed skill on a cooldown — Fighter
+  *Whirlwind* (self AoE + knockback to reset the choke), Archer *Arrow Storm* and Mage *Cataclysm*
+  (aim a burst anywhere in range). The **tier-3 duplicate ability upgrades the skill**. Tap a skill
+  button, then tap the field to cast.
+
 ---
 
 ## Project structure
@@ -90,7 +111,7 @@ Files map directly onto the blueprints from the build file:
 ```
 index.html              # loads all modules in order; portrait stage
 assets/battlefield.jpg  # hand-painted battlefield illustration (drawn each battle)
-assets/sprites/         # 18 painted, transparent character/enemy sprites
+assets/sprites/         # 22 painted, transparent character/enemy sprites
 css/style.css           # stylized-fantasy mobile theme
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
@@ -186,8 +207,8 @@ same systems, data tables, and naming so the design intent is preserved.
 
 The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
 sets the art direction — misty forest spawn, winding field path, chunky stone wall with two round
-bastions and a central gate, and a cobblestone bridge to the city. The 12 heroes and 6 enemies are
-**painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
+bastions and a central gate, and a cobblestone bridge to the city. The 12 heroes and 10 enemy types
+are **painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
 depth-scaled, facing-flipped billboards. Each gets **simple 2-3 frame animation** (`Anim.js`) —
 a stepped idle breathe, a walk waddle (moving enemies) and a 3-frame wind-up → strike/cast →
 recover attack — synthesized procedurally from the single painted frame (squash/stretch + lean +

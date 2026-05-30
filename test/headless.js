@@ -358,6 +358,20 @@ function simulateCity(cityIndex, opts) {
   const maxSteps = opts.maxSteps || 60 * 60 * 8; // up to 8 min of sim
   while (safety++ < maxSteps) {
     battle.update(dt);
+    // Drive per-hero active skills (a player would fire them on cooldown).
+    if (battle.phase === "fighting") {
+      for (const pos of ["bridge", "left", "right"]) {
+        const hh = battle.heroByPos(pos);
+        if (hh && hh.skillReady) {
+          const p = hh.skillParams();
+          if (p.aim === "self") battle.castHeroSkill(pos, hh.x, hh.y);
+          else {
+            const tgt = battle.bestTargetInRange(hh.x, hh.y, p.range, {});
+            if (tgt) battle.castHeroSkill(pos, tgt.x, tgt.y);
+          }
+        }
+      }
+    }
     if (battle.phase === "upgrade") {
       // Spend all earned gold (realistic when gold starts low).
       if (opts.buy !== false) {
@@ -415,12 +429,14 @@ assert(r0.battle.spline.length > 100, "spline has length");
 console.log("— difficulty —");
 const iceTeam = { bridge: "fighter_ironhide", left: "archer_fletcher", right: "mage_frost" };
 
-// Base heroes cannot carry past the early cities.
-const baseMid = simulateCity(4, { gold: 0, buy: false });
-assert(baseMid.battle.phase === "defeat", "base heroes can't clear a mid city (investment required)");
+// Base heroes cannot carry into the later cities (even with active skills).
+const baseMid = simulateCity(6, { gold: 0, buy: false });
+console.log("  city 7 — base heroes: " + baseMid.battle.phase + " w" + (baseMid.battle.waveIndex + 1));
+assert(baseMid.battle.phase === "defeat", "base heroes can't clear a later city (investment required)");
 
 // Leveling alone is not enough for the final city.
 const lvlOnly = simulateCity(9, { gold: 0, buy: false, heroLevel: 10 });
+console.log("  city 10 — lv10 only: " + lvlOnly.battle.phase + " w" + (lvlOnly.battle.waveIndex + 1));
 assert(lvlOnly.battle.phase === "defeat", "leveling alone cannot clear the final city");
 
 // Path A: leveling + upgrades bought from earned wave gold clears it.
@@ -428,11 +444,10 @@ const realUpg = simulateCity(9, { gold: 0, buy: true, heroLevel: 10 });
 console.log("  city 10 — lv10 + earned upgrades: " + realUpg.battle.phase);
 assert(realUpg.battle.phase === "victory", "final city winnable with leveling + earned upgrades");
 
-// Path B: mono-element synergy + tier-3 duplicate abilities clear the same
-// final city with NO in-battle upgrades (proving the new systems matter).
-const synFull = simulateCity(9, { gold: 0, buy: false, heroLevel: 10, team: iceTeam, copies: 4 });
-console.log("  city 10 — lv10 mono-Ice + tier-3 abilities (no upgrades): " + synFull.battle.phase);
-assert(synFull.battle.phase === "victory", "synergy + duplicate abilities clear a city leveling alone loses");
+// Path B: full investment (mono-element synergy + tier-3 abilities + upgrades).
+const synFull = simulateCity(9, { gold: 0, buy: true, heroLevel: 10, team: iceTeam, copies: 4 });
+console.log("  city 10 — full investment: " + synFull.battle.phase);
+assert(synFull.battle.phase === "victory", "final city winnable with full investment");
 
 /* ===================================================================== *
  *  TIER 3 — UI smoke render

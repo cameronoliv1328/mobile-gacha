@@ -410,6 +410,42 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     }
   }
 
+  /* ---- Active skills -------------------------------------------------- */
+
+  castHeroSkill(pos, x, y) {
+    const h = this.heroesByPos[pos];
+    if (!h || !h.alive) return false;
+    return h.castSkill(x, y);
+  }
+
+  knockbackEnemies(cx, cy, radius, amount) {
+    const r2 = radius * radius;
+    for (const e of this.enemies) {
+      if (!e.alive || !e.blockable) continue; // can't knock flyers / burrowers
+      if (LW.util.dist2(cx, cy, e.x, e.y) <= r2) {
+        e.splineDistance = Math.max(0, e.splineDistance - amount);
+        e.state = "move";
+        e._syncPos();
+      }
+    }
+  }
+
+  // Snapshot of each deployed hero's skill (for the UI skill bar).
+  heroSkills() {
+    const out = [];
+    for (const pos of ["bridge", "left", "right"]) {
+      const h = this.heroesByPos[pos];
+      if (!h || !h.skillDef) continue;
+      const p = h.skillParams();
+      out.push({ pos, heroId: h.heroId, name: h.skillDef.name, aim: p.aim, cooldown: p.cooldown, cd: Math.max(0, h.skillCD), ready: h.skillReady, alive: h.alive });
+    }
+    return out;
+  }
+
+  heroByPos(pos) {
+    return this.heroesByPos[pos];
+  }
+
   /* ---- Main loop ------------------------------------------------------ */
 
   setSpeed(mult) {

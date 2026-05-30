@@ -127,6 +127,28 @@ LW.Config = {
     },
   },
 
+  /* ---- Per-hero active skills (manually triggered, tap-aimed) ----------
+   * Every deployed hero has one class skill on a cooldown. The tier-3
+   * duplicate ability upgrades it (tier3 overrides). Fighter self-casts;
+   * Archer/Mage are aimed at a point within `range`. */
+  ACTIVE_SKILLS: {
+    Fighter: {
+      name: "Whirlwind", aim: "self", cooldown: 12, radius: 92, dmgMult: 2.4,
+      knockback: 60, slow: { factor: 0.6, dur: 2 }, color: "#ffcaa0",
+      tier3: { dmgMult: 3.3, radius: 114, knockback: 84, cooldown: 10 },
+    },
+    Archer: {
+      name: "Arrow Storm", aim: "target", cooldown: 11, range: 380, radius: 82, dmgMult: 2.2,
+      color: "#eaffd0",
+      tier3: { dmgMult: 3.0, radius: 106, cooldown: 9, volleys: 2 },
+    },
+    Mage: {
+      name: "Cataclysm", aim: "target", cooldown: 13, range: 320, radius: 104, dmgMult: 3.0,
+      color: "#ffd8a0",
+      tier3: { dmgMult: 4.2, radius: 130, cooldown: 11 },
+    },
+  },
+
   /* ---- Combat 2.0: damage types, affinities, status combos ------------ */
   COMBAT: {
     // Class -> damage type. A hero's element comes from the hero data.

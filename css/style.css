@@ -427,3 +427,13 @@ body {
 
 .hud-synergy { margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(8, 10, 16, 0.5); padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; width: fit-content; }
 .hud-syn-ic { font-size: 14px; }
+
+/* ---- Active-skill bar ------------------------------------------------- */
+.skill-bar { position: absolute; bottom: 22px; left: 0; right: 0; display: flex; gap: 14px; justify-content: center; pointer-events: none; }
+.skill-btn { position: relative; width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); background: rgba(8, 10, 16, 0.6); overflow: hidden; padding: 0; cursor: pointer; pointer-events: auto; transition: box-shadow 0.15s, border-color 0.15s; }
+.skill-btn .thumb { width: 100%; height: 100%; border-radius: 50%; box-shadow: none; }
+.skill-btn.ready { border-color: var(--gold); box-shadow: 0 0 12px rgba(240, 185, 66, 0.55); }
+.skill-btn.armed { border-color: #fff; box-shadow: 0 0 16px #fff; transform: scale(1.06); }
+.skill-btn.dead { opacity: 0.4; filter: grayscale(1); }
+.skill-cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; background: rgba(0, 0, 0, 0.6); pointer-events: none; }
+.skill-name { position: absolute; left: -10px; right: -10px; bottom: -14px; font-size: 9px; font-weight: 700; text-align: center; color: rgba(255, 255, 255, 0.7); white-space: nowrap; text-shadow: 0 1px 2px #000; pointer-events: none; }
