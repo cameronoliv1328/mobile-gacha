@@ -78,9 +78,9 @@ LW.GameInstance = class GameInstance extends LW.util.Emitter {
   }
 
   /* Reward for clearing a single (non-final) wave. */
-  rewardWave(cityIndex, waveIndex) {
-    const gold = LW.Config.reward.waveGold(cityIndex, waveIndex);
-    const crystals = LW.Config.reward.waveCrystals;
+  rewardWave(cityIndex, waveIndex, goldMult, bonusCrystals) {
+    const gold = Math.round(LW.Config.reward.waveGold(cityIndex, waveIndex) * (goldMult || 1));
+    const crystals = LW.Config.reward.waveCrystals + (bonusCrystals || 0);
     this.state.gold += gold;
     this.state.regularCrystals += crystals;
     this.state.stats.wavesCleared = (this.state.stats.wavesCleared || 0) + 1;

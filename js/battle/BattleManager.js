@@ -15,21 +15,31 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.cityIndex = cityIndex;
     this.cityName = LW.Levels.cityName(cityIndex);
 
-    this.spline = new LW.Spline(LW.Config.splinePoints);
+    this.lanes = LW.Config.lanes.map((l) => new LW.Spline(l.points));
+    this.blockLane = LW.Config.blockLane;
+    this.spline = this.lanes[this.blockLane]; // centre lane = the Fighter's lane
     this.map = new LW.BattleMap(this);
     this.wall = new LW.CityWall();
     this.turret = new LW.Turret(this, this.map.getAnchor("Anchor_Turret_Main"));
 
-    // Distances along the path used for blocking/queueing. The Fighter group
-    // holds the gate apron; enemies stack up the path in front of it.
+    // The Fighter blocks the centre lane; compute its choke distances. Side
+    // lanes have no melee blocker and must be cleared by ranged + turret.
     const fa = this.map.getAnchor("Anchor_Bridge_Hero");
-    this.blockDistance = this._distanceAtPoint(fa.x, fa.y + 4);
+    this.blockDistance = this._distanceOn(this.spline, fa.x, fa.y + 4);
     this.gateDistance = Math.max(0, this.blockDistance - 150);
+    this.laneGate = this.lanes.map((s) => this._gateDistOn(s, 690)); // for burrowers
 
     this.heroes = [];
     this.heroesByPos = {};
     this.bridgeHero = null;
     this.synergy = null;
+
+    // Roguelite wave state.
+    this.affix = LW.Config.AFFIXES[0]; // current wave modifier
+    this.pendingAffix = null; // chosen for the next wave
+    this.affixHeroRangeMult = 1;
+    this.nextWaveData = null; // pre-generated next wave (drives the preview)
+    this.waveOptions = []; // [{ affix }] offered between waves
     this.units = []; // support units
     this.enemies = [];
     this.projectiles = [];
@@ -57,15 +67,22 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
 
   start() {
     this._deployTeam();
+    this.affix = LW.Config.AFFIXES[0];
+    this.nextWaveData = LW.Levels.getWave(this.cityIndex, 0);
     this.phase = "prep";
     this.prepTimer = 1.1;
     this.emit("phase", this.phase);
   }
 
   _distanceAtPoint(px, py) {
+    return this._distanceOn(this.spline, px, py);
+  }
+
+  // Arc-length distance of the sample nearest (px,py) on a given spline.
+  _distanceOn(spline, px, py) {
     let best = 0;
     let bestD = Infinity;
-    for (const s of this.spline.samples) {
+    for (const s of spline.samples) {
       const d = LW.util.dist2(px, py, s.x, s.y);
       if (d < bestD) {
         bestD = d;
@@ -73,6 +90,32 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       }
     }
     return best;
+  }
+
+  // Distance of the sample whose Y is closest to a target (used for gates).
+  _gateDistOn(spline, y) {
+    let best = 0;
+    let bestD = Infinity;
+    for (const s of spline.samples) {
+      const d = Math.abs(s.y - y);
+      if (d < bestD) {
+        bestD = d;
+        best = s.d;
+      }
+    }
+    return best;
+  }
+
+  // Which lane a spawn enters. Bosses take the centre (the Fighter's lane).
+  pickLane(def) {
+    if (def && def.isBoss) return this.blockLane;
+    const w = LW.Config.laneWeights;
+    let r = Math.random() * (w[0] + w[1] + w[2]);
+    for (let i = 0; i < w.length; i++) {
+      if (r < w[i]) return i;
+      r -= w[i];
+    }
+    return this.blockLane;
   }
 
   _deployTeam() {
@@ -110,10 +153,28 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
 
   startWave(idx) {
     this.waveIndex = idx;
-    const wave = LW.Levels.getWave(this.cityIndex, idx);
+    this.affix = this.pendingAffix || LW.Config.AFFIXES[0];
+    this.pendingAffix = null;
+    this.affixHeroRangeMult = (this.affix.hero && this.affix.hero.rangeMult) || 1;
+
+    const wave = this.nextWaveData || LW.Levels.getWave(this.cityIndex, idx);
+    this.nextWaveData = null;
     this.waveScale = wave.scale;
-    this.waveSpawns = wave.spawns;
     this.isBossWave = wave.isBoss;
+
+    // Swarm affix: extra spawns interleaved.
+    let spawns = wave.spawns.slice();
+    if (this.affix.count && this.affix.count > 1) {
+      const base = spawns.slice();
+      const extra = Math.round(base.length * (this.affix.count - 1));
+      let t = base.length ? base[base.length - 1].t : 1;
+      for (let i = 0; i < extra; i++) {
+        t += 0.28;
+        spawns.push({ enemyId: base[i % base.length].enemyId, t });
+      }
+      spawns.sort((a, b) => a.t - b.t);
+    }
+    this.waveSpawns = spawns;
     this.spawnCursor = 0;
     this.waveTimer = 0;
 
@@ -141,7 +202,9 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   }
 
   _onWaveCleared() {
-    const reward = this.game.rewardWave(this.cityIndex, this.waveIndex);
+    const goldMult = this.affix.reward || 1;
+    const bonusCrystals = goldMult >= 1.5 ? 1 : 0;
+    const reward = this.game.rewardWave(this.cityIndex, this.waveIndex, goldMult, bonusCrystals);
     this.emit("reward", { kind: "wave", reward, wave: this.waveIndex + 1 });
 
     if (this.waveIndex >= LW.Config.WAVES_PER_CITY - 1) {
@@ -150,9 +213,48 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       this.emit("phase", this.phase);
       this.emit("victory", { waveReward: reward, cityReward });
     } else {
+      // Pre-generate the next wave + offer affix options to choose from.
+      this.nextWaveData = LW.Levels.getWave(this.cityIndex, this.waveIndex + 1);
+      this.waveOptions = this._genWaveOptions(this.nextWaveData.isBoss);
+      this.pendingAffix = this.waveOptions[0].affix; // default: Standard
       this.phase = "upgrade";
       this.emit("phase", this.phase);
     }
+  }
+
+  _genWaveOptions(isBoss) {
+    const all = LW.Config.AFFIXES;
+    const standard = all[0];
+    const others = LW.util.shuffle(all.slice(1));
+    return [{ affix: standard }, { affix: others[0] }, { affix: others[1] }];
+  }
+
+  chooseWaveOption(i) {
+    if (this.waveOptions[i]) {
+      this.pendingAffix = this.waveOptions[i].affix;
+      this.emit("change");
+    }
+  }
+
+  // Dominant enemy types in the upcoming wave (for the threat preview).
+  threatPreview() {
+    if (!this.nextWaveData) return [];
+    const counts = {};
+    for (const s of this.nextWaveData.spawns) counts[s.enemyId] = (counts[s.enemyId] || 0) + 1;
+    return Object.keys(counts)
+      .map((id) => ({ id, n: counts[id], def: LW.EnemyData.byId(id) }))
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 4);
+  }
+
+  _applyAffix(e) {
+    const m = this.affix && this.affix.enemy;
+    if (!m) return;
+    if (m.speedMult) e.baseSpeed *= m.speedMult;
+    if (m.physResist) e.physResist = Math.min(0.85, e.physResist + m.physResist);
+    if (m.atkMult) { e.baseAtk = Math.round(e.baseAtk * m.atkMult); e.atk = e.baseAtk; }
+    if (m.hpMult) { e.maxHP = Math.max(1, Math.round(e.maxHP * m.hpMult)); e.hp = e.maxHP; }
+    if (m.regen) e.affixRegen = m.regen;
   }
 
   _defeat() {
@@ -221,15 +323,21 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     for (const e of cand) {
       if (mode === "strong") { if (e.maxHP > best.maxHP) best = e; }
       else if (mode === "weak") { if (e.hp < best.hp) best = e; }
-      else if (e.splineDistance > best.splineDistance) best = e; // default: most advanced
+      // default: whoever is closest to breaching (fraction of its lane done) —
+      // this makes ranged heroes cover the unblocked side lanes.
+      else if (this._progress(e) > this._progress(best)) best = e;
     }
     return best;
+  }
+
+  _progress(e) {
+    return e.splineDistance / (e.endDist || 1);
   }
 
   bestTargetsInRange(x, y, range, n) {
     const r2 = range * range;
     const inRange = this.enemies.filter((e) => e.alive && e.targetable && LW.util.dist2(x, y, e.x, e.y) <= r2);
-    inRange.sort((a, b) => b.splineDistance - a.splineDistance);
+    inRange.sort((a, b) => this._progress(b) - this._progress(a));
     return inRange.slice(0, n);
   }
 
@@ -341,10 +449,9 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     const def = LW.EnemyData.byId(defId);
     if (!def) return;
     for (let i = 0; i < count; i++) {
-      const e = new LW.Enemy(this, def, parent.scale);
+      const e = new LW.Enemy(this, def, parent.scale, parent.lane);
       e.splineDistance = Math.max(0, parent.splineDistance - 6 - i * 4);
       e._syncPos();
-      e.x += (i - (count - 1) / 2) * 14;
       this.enemies.push(e);
     }
   }
@@ -398,7 +505,8 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       return;
     }
     const band = this.gateDistance - 16;
-    const queued = this.enemies.filter((e) => e.alive && e.blockable && e.splineDistance >= band);
+    // Only the centre lane has the Fighter; side lanes are never blocked.
+    const queued = this.enemies.filter((e) => e.alive && e.blockable && e.laneBlocked && e.splineDistance >= band);
     queued.sort((a, b) => b.splineDistance - a.splineDistance);
     const spacing = 18;
     for (let i = 0; i < queued.length; i++) {
@@ -467,7 +575,11 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       while (this.spawnCursor < this.waveSpawns.length && this.waveSpawns[this.spawnCursor].t <= this.waveTimer) {
         const s = this.waveSpawns[this.spawnCursor++];
         const def = LW.EnemyData.byId(s.enemyId);
-        if (def) this.enemies.push(new LW.Enemy(this, def, this.waveScale));
+        if (def) {
+          const e = new LW.Enemy(this, def, this.waveScale, this.pickLane(def));
+          this._applyAffix(e);
+          this.enemies.push(e);
+        }
       }
       this._enemySupportPass();
       this._updateBlocking();
@@ -589,6 +701,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       isBoss: this.isBossWave,
       kills: this.killCount,
       synergy: this.synergy,
+      affix: this.affix,
     };
   }
 };

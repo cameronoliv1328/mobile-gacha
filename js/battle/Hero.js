@@ -86,7 +86,7 @@ LW.Hero = class Hero extends LW.Combatant {
     this.hp = Math.max(1, Math.round(this.maxHP * ratio));
     this.atk = Math.max(1, Math.round(this.baseStats.atk * atkMult));
     this.attackInterval = this.baseStats.attackInterval / asMult;
-    this.range = this.baseStats.range * (am.rangeMult || 1);
+    this.range = this.baseStats.range * (am.rangeMult || 1) * (this.battle.affixHeroRangeMult || 1);
     this.splash = this.baseSplash * (am.splashMult || 1);
 
     this.extraProjectiles = am.extraProjectiles || 0;

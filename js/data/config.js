@@ -127,6 +127,19 @@ LW.Config = {
     },
   },
 
+  /* ---- Roguelite wave affixes (push-your-luck) ------------------------
+   * Between waves the player picks the next wave from a few options. Tougher
+   * affixes pay out more gold + crystals (reward = multiplier). */
+  AFFIXES: [
+    { id: "none", name: "Standard", icon: "•", desc: "No modifier.", reward: 1.0 },
+    { id: "frenzied", name: "Frenzied", icon: "»", desc: "Enemies move 30% faster.", enemy: { speedMult: 1.3 }, reward: 1.3 },
+    { id: "armored", name: "Armored", icon: "🛡", desc: "Enemies take 25% less physical damage.", enemy: { physResist: 0.25 }, reward: 1.35 },
+    { id: "swarm", name: "Swarm", icon: "🐾", desc: "50% more enemies, each a bit weaker.", count: 1.5, enemy: { hpMult: 0.72 }, reward: 1.35 },
+    { id: "misty", name: "Misty", icon: "🌫", desc: "Your heroes' range is cut 25%.", hero: { rangeMult: 0.75 }, reward: 1.4 },
+    { id: "regen", name: "Regenerating", icon: "♺", desc: "Enemies slowly regenerate health.", enemy: { regen: 0.03 }, reward: 1.4 },
+    { id: "bloodmoon", name: "Blood Moon", icon: "☾", desc: "Enemies hit 30% harder — but drop far more gold.", enemy: { atkMult: 1.3 }, reward: 1.7 },
+  ],
+
   /* ---- Per-hero active skills (manually triggered, tap-aimed) ----------
    * Every deployed hero has one class skill on a cooldown. The tier-3
    * duplicate ability upgrades it (tier3 overrides). Fighter self-casts;
@@ -181,7 +194,7 @@ LW.Config = {
   },
 
   /* ---- City / Wall ---------------------------------------------------- */
-  CITY_BASE_HP: 20,
+  CITY_BASE_HP: 35,
 
   /* ---- In-battle (per-run) upgrade panel ------------------------------ */
   UPGRADE: {
@@ -224,42 +237,33 @@ LW.Config = {
   speedOptions: [1, 2],
 
   /* ---- Layout anchors (logical coordinates) ---------------------------
-   * Fitted to the painted battlefield (assets/battlefield.jpg). Mirrors the
-   * "Spawn Anchors" section of the build file. Ranged heroes stand ON TOP of
-   * the two bastions; the Fighter group holds the apron in front of the gate. */
+   * Fitted to the 3-lane painted battlefield (assets/battlefield.jpg). Ranged
+   * heroes stand on the two bastion tops; the Fighter holds the CENTRE gate. */
   anchors: {
-    Anchor_Bastion_Left_Hero: { x: 110, y: 598 },
-    Anchor_Bastion_Left_Unit_1: { x: 80, y: 612 },
-    Anchor_Bastion_Left_Unit_2: { x: 140, y: 612 },
-    Anchor_Bastion_Right_Hero: { x: 432, y: 596 },
-    Anchor_Bastion_Right_Unit_1: { x: 402, y: 610 },
-    Anchor_Bastion_Right_Unit_2: { x: 462, y: 610 },
-    Anchor_Bridge_Hero: { x: 270, y: 588 },
-    Anchor_Bridge_Unit_1: { x: 234, y: 602 },
-    Anchor_Bridge_Unit_2: { x: 306, y: 602 },
-    Anchor_EnemySpawn_Top: { x: 256, y: 58 },
-    Anchor_EnemySpawn_LeftTop: { x: 210, y: 72 },
-    Anchor_EnemySpawn_RightTop: { x: 300, y: 72 },
-    Anchor_CityDamagePoint: { x: 270, y: 946 },
-    Anchor_Turret_Main: { x: 270, y: 624 },
+    Anchor_Bastion_Left_Hero: { x: 160, y: 648 },
+    Anchor_Bastion_Left_Unit_1: { x: 137, y: 662 },
+    Anchor_Bastion_Left_Unit_2: { x: 183, y: 662 },
+    Anchor_Bastion_Right_Hero: { x: 367, y: 646 },
+    Anchor_Bastion_Right_Unit_1: { x: 344, y: 660 },
+    Anchor_Bastion_Right_Unit_2: { x: 390, y: 660 },
+    Anchor_Bridge_Hero: { x: 263, y: 664 },
+    Anchor_Bridge_Unit_1: { x: 236, y: 680 },
+    Anchor_Bridge_Unit_2: { x: 290, y: 680 },
+    Anchor_EnemySpawn_Top: { x: 256, y: 44 },
+    Anchor_CityDamagePoint: { x: 256, y: 946 },
+    Anchor_Turret_Main: { x: 256, y: 628 },
     Anchor_CameraFocus: { x: 270, y: 470 },
   },
 
-  /* Main enemy path control points, traced along the painted dirt path
-   * (top forest clearing -> winding field -> gate apron -> through gate ->
-   * bridge -> city). The Fighter group blocks at the gate apron. */
-  splinePoints: [
-    { x: 256, y: 48 },
-    { x: 232, y: 138 },
-    { x: 198, y: 232 },
-    { x: 232, y: 318 },
-    { x: 298, y: 372 },
-    { x: 300, y: 452 },
-    { x: 276, y: 528 },
-    { x: 270, y: 600 },
-    { x: 270, y: 662 }, // gate apron (fighter choke)
-    { x: 270, y: 744 }, // through the gate
-    { x: 270, y: 852 }, // bridge
-    { x: 270, y: 946 }, // city point
+  /* Three lanes (left, centre, right) traced along the painted paths to the
+   * three gates. The Fighter blocks the CENTRE lane (blockLane); the side
+   * lanes have no melee blocker and must be cleared by ranged + turret +
+   * skills. The centre lane draws the most enemies (and bosses). */
+  blockLane: 1,
+  laneWeights: [0.22, 0.56, 0.22],
+  lanes: [
+    { points: [{ x: 150, y: 44 }, { x: 122, y: 150 }, { x: 104, y: 270 }, { x: 96, y: 398 }, { x: 80, y: 520 }, { x: 64, y: 618 }, { x: 58, y: 696 }, { x: 58, y: 800 }, { x: 60, y: 946 }] },
+    { points: [{ x: 272, y: 40 }, { x: 268, y: 150 }, { x: 262, y: 280 }, { x: 266, y: 410 }, { x: 258, y: 530 }, { x: 256, y: 622 }, { x: 256, y: 696 }, { x: 256, y: 800 }, { x: 258, y: 946 }] },
+    { points: [{ x: 392, y: 44 }, { x: 414, y: 150 }, { x: 432, y: 270 }, { x: 440, y: 398 }, { x: 452, y: 520 }, { x: 452, y: 618 }, { x: 452, y: 696 }, { x: 452, y: 800 }, { x: 452, y: 946 }] },
   ],
 };

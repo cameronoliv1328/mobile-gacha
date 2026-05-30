@@ -756,9 +756,61 @@ LW.UI = class UI {
     panel.appendChild(gold);
     panel._goldVal = gold.querySelector(".pg-val");
 
-    panel.appendChild(
-      this.el("button", { class: "btn btn-primary big", text: "Continue → Wave " + (this.battle.waveIndex + 2), onclick: () => this.battle.continueToNextWave() })
-    );
+    // Threat preview of the next wave's main enemy types.
+    const preview = this.battle.threatPreview ? this.battle.threatPreview() : [];
+    if (preview.length) {
+      const isBoss = this.battle.nextWaveData && this.battle.nextWaveData.isBoss;
+      const pv = this.el("div", { class: "threat-preview" });
+      pv.appendChild(this.el("div", { class: "threat-label", text: "Incoming" + (isBoss ? "  —  BOSS WAVE" : "") }));
+      const row = this.el("div", { class: "threat-row" });
+      for (const t of preview) {
+        if (!t.def) continue;
+        const cell = this.el("div", { class: "threat-cell", title: t.def.name });
+        cell.appendChild(this.enemyThumb(t.def, 36));
+        cell.appendChild(this.el("span", { class: "threat-n", text: "×" + t.n }));
+        row.appendChild(cell);
+      }
+      pv.appendChild(row);
+      panel.appendChild(pv);
+    }
+
+    // Continue button (label reflects the chosen wave affix).
+    const contBtn = this.el("button", { class: "btn btn-primary big", onclick: () => this.battle.continueToNextWave() });
+    const updateCont = () => {
+      const a = this.battle.pendingAffix;
+      contBtn.textContent = "Continue → Wave " + (this.battle.waveIndex + 2) + (a && a.id !== "none" ? "  ·  " + a.name : "");
+    };
+
+    // Push-your-luck: choose the next wave's modifier (tougher = more loot).
+    const options = this.battle.waveOptions || [];
+    if (options.length) {
+      const af = this.el("div", { class: "affix-choice" });
+      af.appendChild(this.el("div", { class: "affix-label", text: "Choose the next wave — tougher modifiers drop more loot" }));
+      const arow = this.el("div", { class: "affix-row" });
+      const rebuildAffix = () => {
+        LW.util.clear(arow);
+        options.forEach((o, i) => {
+          const a = o.affix;
+          const sel = this.battle.pendingAffix && this.battle.pendingAffix.id === a.id;
+          const chip = this.el("button", {
+            class: "affix-chip" + (sel ? " sel" : ""),
+            title: a.desc,
+            onclick: () => { this.battle.chooseWaveOption(i); rebuildAffix(); updateCont(); },
+          });
+          chip.appendChild(this.el("div", { class: "affix-ic", text: a.icon }));
+          chip.appendChild(this.el("div", { class: "affix-name", text: a.name }));
+          chip.appendChild(this.el("div", { class: "affix-desc", text: a.desc }));
+          chip.appendChild(this.el("div", { class: "affix-reward", text: a.reward > 1 ? "+" + Math.round((a.reward - 1) * 100) + "% loot" : "—" }));
+          arow.appendChild(chip);
+        });
+      };
+      rebuildAffix();
+      af.appendChild(arow);
+      panel.appendChild(af);
+    }
+
+    updateCont();
+    panel.appendChild(contBtn);
     this.battleOverlay.appendChild(panel);
     requestAnimationFrame(() => panel.classList.add("show"));
   }

@@ -39,7 +39,7 @@ LW.Levels = (function () {
   }
 
   function scaleFor(cityIndex, waveIndex) {
-    return 1 + 0.4 * cityIndex + 0.11 * waveIndex;
+    return 1 + 0.3 * cityIndex + 0.1 * waveIndex;
   }
 
   function getWave(cityIndex, waveIndex) {

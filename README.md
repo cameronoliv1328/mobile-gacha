@@ -3,8 +3,8 @@
 > Hold the bridge. Defend the city.
 
 **Last Wall** is a stylized-fantasy, **portrait / iPhone-style city-defense gacha game**. Monsters
-emerge from a forest at the top of the screen, march down a winding path through an open field,
-and funnel toward a fortified wall with two bastions and a central gate. You deploy **3 heroes** —
+emerge from a forest at the top of the screen, advance down **three lanes** through an open field,
+and funnel toward a fortified wall with three gates and two bastions. You deploy **3 heroes** —
 a **Fighter** holding the bridge choke point and two ranged **Archer/Mage** heroes on the
 bastions — each with **2 matching support units**. Survive 10 waves per city, upgrade between
 waves, earn summon crystals, and pull new heroes from the gacha.
@@ -101,6 +101,13 @@ Clearing a wave is a tactical read, not just an auto-battle:
   *Whirlwind* (self AoE + knockback to reset the choke), Archer *Arrow Storm* and Mage *Cataclysm*
   (aim a burst anywhere in range). The **tier-3 duplicate ability upgrades the skill**. Tap a skill
   button, then tap the field to cast.
+- **Three lanes.** Enemies advance down three lanes to three gates. The Fighter can only physically
+  block the **centre** lane; the two **side lanes** have no melee blocker and must be cleared by your
+  bastion ranged heroes + turret + skills (ranged auto-prioritise whoever is closest to breaching).
+  You can't hold everything — decide where to commit.
+- **Roguelite waves.** Between waves you get a **threat preview** of the next wave's enemies and a
+  **push-your-luck** choice of wave modifier — Frenzied, Armored, Swarm, Misty (your range is cut),
+  Regenerating, Blood Moon. Tougher affixes pay out more gold + crystals.
 
 ---
 
@@ -184,9 +191,10 @@ npm run shots     # renders in Chromium -> ./screenshots, reports console errors
 
 | Requirement | Implementation |
 |---|---|
-| Forest -> field -> winding path -> wall/2 bastions/gate -> bridge layout | `battle/BattleMap.js` |
-| Enemies spawn at top forest, follow one winding path | `battle/Spline.js`, `Enemy.js` |
-| Exactly 3 hero positions; bridge=Fighter, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
+| Forest -> field -> 3 winding lanes -> wall/2 bastions/3 gates -> bridges | `battle/BattleMap.js`, `config.lanes` |
+| Enemies spawn at top forest, follow 3 lane splines | `battle/Spline.js`, `Enemy.js`, `BattleManager.pickLane` |
+| 3 hero positions; Fighter holds centre lane, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
+| 3 lanes + roguelite affix waves + per-hero active skills | `BattleManager`, `config.AFFIXES/ACTIVE_SKILLS`, `ui/UI.js` |
 | Each hero spawns 2 matching support units | `battle/Hero.spawnSupportUnits` |
 | Enemies blocked at the bridge by the Fighter group | `BattleManager._updateBlocking`, `Enemy.update` |
 | Turret fires automatically | `battle/Turret.js` |
@@ -206,8 +214,8 @@ the perspective battle scene, DOM for menus, `localStorage` for the save game), 
 same systems, data tables, and naming so the design intent is preserved.
 
 The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
-sets the art direction — misty forest spawn, winding field path, chunky stone wall with two round
-bastions and a central gate, and a cobblestone bridge to the city. The 12 heroes and 10 enemy types
+sets the art direction — misty forest spawn, three winding lanes, a long stone wall with three gates
+and two round bastions, and bridges to the city. The 12 heroes and 10 enemy types
 are **painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
 depth-scaled, facing-flipped billboards. Each gets **simple 2-3 frame animation** (`Anim.js`) —
 a stepped idle breathe, a walk waddle (moving enemies) and a 3-frame wind-up → strike/cast →

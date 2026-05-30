@@ -9,9 +9,16 @@
 window.LW = window.LW || {};
 
 LW.Enemy = class Enemy {
-  constructor(battle, def, scale) {
+  constructor(battle, def, scale, lane) {
     this.battle = battle;
     this.def = def;
+    // Lane assignment (which spline this enemy follows).
+    this.lane = lane == null ? battle.blockLane : lane;
+    this.spline = battle.lanes[this.lane];
+    this.laneBlocked = this.lane === battle.blockLane; // only centre is blocked
+    this.blockDist = battle.blockDistance;
+    this.gateDist = battle.laneGate ? battle.laneGate[this.lane] : battle.gateDistance;
+    this.endDist = this.spline.length;
     this.enemyId = def.id;
     this.spriteId = def.spriteId || def.id;
     this.maxHP = Math.round(def.hp * scale);
@@ -70,17 +77,18 @@ LW.Enemy = class Enemy {
     this.alive = true;
     this.attackCD = Math.random() * this.attackInterval;
     this.target = null;
-    this.holdDistance = battle.blockDistance;
+    this.holdDistance = this.blockDist;
     this.t = Math.random() * 4;
     this.facing = -1;
     this.attackAnimT = 0;
     this.attackAnimDur = 0.28;
     this._buffSpeed = 1;
     this._buffAtk = 1;
+    this.affixRegen = 0;
     this._healCD = this.healer ? this.healer.interval : 0;
     this.hover = this.flying ? this.radius * 2.4 : 0;
 
-    const p = battle.spline.pointAt(0);
+    const p = this.spline.pointAt(0);
     this.x = p.x;
     this.y = p.y;
   }
@@ -88,7 +96,7 @@ LW.Enemy = class Enemy {
   /* ---- Queries -------------------------------------------------------- */
 
   get burrowed() {
-    return this.burrower && this.splineDistance < this.battle.gateDistance - 90 && this.splineDistance > 60;
+    return this.burrower && this.splineDistance < this.gateDist - 90 && this.splineDistance > 60;
   }
   get targetable() {
     return this.alive && !this.burrowed;
@@ -162,6 +170,9 @@ LW.Enemy = class Enemy {
       this.burnT -= dt;
       if (this.hp <= 0) { this.die(); return; }
     }
+    if (this.affixRegen && this.hp < this.maxHP) {
+      this.hp = Math.min(this.maxHP, this.hp + this.maxHP * this.affixRegen * dt);
+    }
 
     // Berserker scaling.
     if (this.berserker && this.hp / this.maxHP <= this.berserker.hpBelow) {
@@ -207,20 +218,20 @@ LW.Enemy = class Enemy {
 
     // Moving.
     let next = this.splineDistance + eff * dt;
-    if (this.blockable && this.battle.hasLivingBlocker() && next > this.battle.blockDistance) {
-      next = this.battle.blockDistance;
+    if (this.blockable && this.laneBlocked && this.battle.hasLivingBlocker() && next > this.blockDist) {
+      next = this.blockDist;
     }
     this.splineDistance = next;
     this._syncPos();
-    if (this.splineDistance >= this.battle.spline.length - 0.5) this.reachCity();
+    if (this.splineDistance >= this.endDist - 0.5) this.reachCity();
   }
 
   _syncPos() {
-    const p = this.battle.spline.pointAt(this.splineDistance);
+    const p = this.spline.pointAt(this.splineDistance);
     const prevX = this.x;
     this.x = p.x;
     this.y = p.y;
-    const tan = this.battle.spline.tangentAt(this.splineDistance);
+    const tan = this.spline.tangentAt(this.splineDistance);
     if (Math.abs(tan.x) > 0.05) this.facing = tan.x >= 0 ? 1 : -1;
     else if (this.x !== prevX) this.facing = this.x >= prevX ? 1 : -1;
   }
