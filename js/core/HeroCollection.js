@@ -66,6 +66,26 @@ LW.HeroCollection = class HeroCollection {
     return h ? h.copies || 0 : 0;
   }
 
+  // The copy count at which every duplicate ability is unlocked — i.e. the
+  // hero is fully collected. Derived from the last ABILITY_UNLOCKS threshold.
+  maxCopies() {
+    const u = LW.Config.ABILITY_UNLOCKS;
+    return u[u.length - 1];
+  }
+
+  // Owned and fully collected (all duplicate ability tiers unlocked)?
+  isMaxed(id) {
+    return this.isOwned(id) && this.copies(id) >= this.maxCopies();
+  }
+
+  // Retired heroes have left the summon pool: a fully-collected hero of a
+  // RETIRE_WHEN_MAXED rarity (Legendaries) so no duplicate can ever be pulled.
+  isRetired(id) {
+    const def = LW.HeroData.byId(id);
+    if (!def || !LW.Config.RETIRE_WHEN_MAXED.includes(def.rarity)) return false;
+    return this.isMaxed(id);
+  }
+
   // Number of ability tiers unlocked (0..3) from the copy count.
   unlockedTiers(id) {
     const c = this.copies(id);

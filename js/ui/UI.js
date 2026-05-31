@@ -54,8 +54,15 @@ LW.UI = class UI {
     else if (this.screen === "campaign") node = this._campaign();
     else if (this.screen === "summon") node = this._summon();
     else if (this.screen === "roster") node = this._roster();
+    else if (this.screen === "hero") node = this._heroScreen(this.inspectId);
     else node = this._menu();
     root.appendChild(node);
+  }
+
+  // Open the full-screen hero inspection view for a hero id.
+  _inspectHero(id) {
+    this.inspectId = id;
+    this.go("hero");
   }
 
   /* ===================================================================== *
@@ -489,11 +496,13 @@ LW.UI = class UI {
         const owned = this.game.heroes.isOwned(def.id);
         const card = this.el("div", {
           class: "hero-card" + (owned ? "" : " unowned") + " rar-" + def.rarity.toLowerCase(),
-          onclick: owned ? () => this._heroDetail(def.id) : null,
+          onclick: owned ? () => this._inspectHero(def.id) : null,
         });
         const eb = this._elementBadge(def.element);
         eb.classList.add("card-elem");
         card.appendChild(eb);
+        // "MAX" tag for a fully-collected hero (retired Legendaries show it too).
+        if (owned && this.game.heroes.isMaxed(def.id)) card.appendChild(this.el("div", { class: "hero-card-max", text: "MAX" }));
         card.appendChild(this.heroThumb(def, 64, owned));
         card.appendChild(this.el("div", { class: "hero-card-name", text: owned ? def.name : "???" }));
         if (owned) card.appendChild(this.el("div", { class: "hero-card-lv", text: "Lv " + this.game.heroes.level(def.id) }));
@@ -503,6 +512,222 @@ LW.UI = class UI {
       }
       wrap.appendChild(grid);
     }
+    return wrap;
+  }
+
+  /* ---- Full-screen hero inspection (portrait, stars, stats, skills) ---- */
+
+  // A large, transparent portrait of the hero drawn with the sprite painters
+  // (no thumbnail backing box, so it sits on the themed stage).
+  heroPortrait(def, size) {
+    const c = document.createElement("canvas");
+    c.width = size;
+    c.height = size;
+    c.className = "hero-portrait-canvas";
+    const ctx = c.getContext("2d");
+    const img = LW.Sprites.spriteFor(def.id);
+    if (img) {
+      const s = Math.min((size * 0.92) / img.width, (size * 0.96) / img.height);
+      const w = img.width * s;
+      const h = img.height * s;
+      ctx.drawImage(img, size / 2 - w / 2, size - h - size * 0.04, w, h);
+    } else {
+      LW.Sprites.humanoid(ctx, {
+        x: size / 2, y: size * 0.92, scale: size / 44, cls: def.class,
+        primary: def.theme.primary, secondary: def.theme.secondary, trim: def.theme.trim,
+        facing: 1, isHero: true, bob: 0,
+      });
+    }
+    return c;
+  }
+
+  _classIcon(cls) {
+    return { Fighter: "🛡", Archer: "🏹", Mage: "✨" }[cls] || "◆";
+  }
+
+  // Ability tags (top-left chips) derived from class + element, e.g. a Fire
+  // Mage reads "AoE DMG" + "Burn" — like the reference hero screen.
+  _heroTags(def) {
+    const byClass = {
+      Fighter: { icon: "🛡", label: "Tank" },
+      Archer: { icon: "🎯", label: "Single DMG" },
+      Mage: { icon: "💥", label: "AoE DMG" },
+    };
+    const byElement = {
+      Fire: { icon: "🔥", label: "Burn" },
+      Ice: { icon: "❄", label: "Freeze" },
+      Nature: { icon: "🌿", label: "Regen" },
+      Storm: { icon: "⚡", label: "Shock" },
+    };
+    return [byClass[def.class], byElement[def.element]].filter(Boolean);
+  }
+
+  _skillIcon(o) {
+    const slot = this.el("div", {
+      class: "hskill" + (o.unlocked ? "" : " locked") + (o.ult ? " ult" : ""),
+      title: o.title,
+      style: "--sk:" + o.color,
+    });
+    slot.appendChild(this.el("span", { class: "hskill-ic", text: o.icon }));
+    slot.appendChild(this.el("span", { class: "hskill-badge", text: o.badge }));
+    if (!o.unlocked) slot.appendChild(this.el("span", { class: "hskill-lock", text: "🔒" }));
+    return slot;
+  }
+
+  // Skill row: the class active skill + the three duplicate-ability tiers
+  // (tier I = passive "Attunement", tier III = ultimate). Mirrors the image's
+  // 4 skill icons with level/passive badges.
+  _heroSkillRow(def, id) {
+    const row = this.el("div", { class: "hero-skill-row" });
+    const E = LW.Config.ELEMENTS[def.element];
+    const color = E ? E.color : "#ffffff";
+
+    const active = LW.Config.ACTIVE_SKILLS[def.class];
+    if (active) {
+      row.appendChild(this._skillIcon({
+        icon: this._classIcon(def.class), color, badge: "S", unlocked: true,
+        title: active.name + " · Active skill",
+      }));
+    }
+    this.game.heroes.abilities(id).forEach((a, i) => {
+      row.appendChild(this._skillIcon({
+        icon: E ? E.icon : "◆", color,
+        badge: i === 0 ? "P" : String(a.tier),
+        unlocked: a.unlocked, ult: a.tier === 3,
+        title: a.name + (a.unlocked ? "" : " · " + a.copiesNeeded + " copies"),
+      }));
+    });
+    return row;
+  }
+
+  _heroScreenDeployBtn(id, slot, label, active) {
+    return this.el("button", {
+      class: "btn deploy-btn" + (active ? " active" : ""),
+      text: active ? "✓ " + label : label,
+      onclick: () => {
+        this.game.heroes.setTeamSlot(slot, id); // emits change -> re-render
+        this.toast(LW.HeroData.byId(id).name + " deployed");
+      },
+    });
+  }
+
+  _heroActions(def, id, team) {
+    const bar = this.el("div", { class: "hero-actions" });
+
+    const cost = this.game.heroes.levelUpCost(id);
+    if (cost != null) {
+      const lvl = this.game.heroes.level(id);
+      const next = this.game.heroes.computeStats(id, lvl + 1);
+      const luBtn = this.el("button", {
+        class: "btn btn-primary",
+        onclick: () => {
+          if (this.game.heroes.levelUp(id)) this.toast(def.name + " is now Lv " + this.game.heroes.level(id));
+          else this.toast("Not enough gold");
+        },
+      }, [
+        this.el("span", { text: "Level Up → Lv " + (lvl + 1) + " (HP " + next.maxHP + " · ATK " + next.atk + ")  " }),
+        this._gem("gold"), this.el("span", { text: " " + cost }),
+      ]);
+      if (this.game.state.gold < cost) luBtn.disabled = true;
+      bar.appendChild(luBtn);
+    } else {
+      bar.appendChild(this.el("div", { class: "maxed", text: "★ Max Level" }));
+    }
+
+    const deploy = this.el("div", { class: "deploy-row" });
+    if (def.class === "Fighter") {
+      deploy.appendChild(this._heroScreenDeployBtn(id, "bridge", "Deploy to Bridge", team.bridge === id));
+    } else {
+      deploy.appendChild(this._heroScreenDeployBtn(id, "left", "Left Bastion", team.left === id));
+      deploy.appendChild(this._heroScreenDeployBtn(id, "right", "Right Bastion", team.right === id));
+    }
+    bar.appendChild(deploy);
+    return bar;
+  }
+
+  _heroScreen(id) {
+    const def = LW.HeroData.byId(id);
+    if (!def) {
+      const w = this.el("div", { class: "screen" });
+      w.appendChild(this.header("Hero", () => this.go("roster")));
+      w.appendChild(this.el("p", { class: "muted", text: "Select a hero from the roster." }));
+      return w;
+    }
+
+    const heroes = this.game.heroes;
+    const owned = heroes.isOwned(id);
+    const stats = heroes.computeStats(id);
+    const lvl = heroes.level(id) || 1;
+    const rar = LW.Config.RARITY[def.rarity];
+    const E = LW.Config.ELEMENTS[def.element];
+    const team = heroes.getTeam();
+
+    const wrap = this.el("div", { class: "screen hero-screen rar-" + def.rarity.toLowerCase() });
+    wrap.appendChild(this.header("Hero", () => this.go("roster")));
+    wrap.appendChild(this.currencyBar());
+
+    // --- Portrait stage with overlays ---
+    const stage = this.el("div", { class: "hero-stage", style: "--elem:" + (E ? E.color : rar.color) });
+
+    const tags = this.el("div", { class: "hero-tags" });
+    for (const t of this._heroTags(def)) {
+      tags.appendChild(this.el("div", { class: "hero-tag" }, [
+        this.el("span", { class: "hero-tag-ic", text: t.icon }),
+        this.el("span", { text: t.label }),
+      ]));
+    }
+    stage.appendChild(tags);
+
+    const dmgType = LW.Config.COMBAT.classDamageType[def.class] || "physical";
+    stage.appendChild(this.el("div", { class: "hero-affinity" }, [
+      this.el("span", { class: "aff-badge dmg-" + dmgType, title: dmgType, text: dmgType === "magic" ? "✨" : "⚔" }),
+      this.el("span", { class: "aff-badge", title: def.element, style: "color:" + (E ? E.color : "#fff") + ";border-color:" + (E ? E.color : "#fff"), text: E ? E.icon : "◆" }),
+      this.el("span", { class: "aff-badge", title: def.class, text: this._classIcon(def.class) }),
+    ]));
+
+    stage.appendChild(this.el("div", { class: "hero-portrait" }, [this.heroPortrait(def, 280)]));
+
+    if (def.rarity === "Legendary") {
+      stage.appendChild(this.el("div", { class: "hero-exclusive" }, [
+        this.el("span", { class: "excl-ic", text: "✦" }),
+        this.el("span", { text: "Exclusive" }),
+      ]));
+    }
+    wrap.appendChild(stage);
+
+    // --- Identity: stars, name, rarity badge, level + details ---
+    const idblock = this.el("div", { class: "hero-id" });
+    const stars = this.el("div", { class: "hero-stars" });
+    const starCount = { Rare: 3, Epic: 4, Legendary: 5 }[def.rarity] || 3;
+    for (let i = 0; i < starCount; i++) stars.appendChild(this.el("span", { class: "hstar", text: "★" }));
+    idblock.appendChild(stars);
+    idblock.appendChild(this.el("div", { class: "hero-name", text: def.name }));
+    idblock.appendChild(this.el("span", { class: "hero-rarity-badge", text: rar.name }));
+    idblock.appendChild(this.el("div", { class: "hero-level-row" }, [
+      this.el("div", { class: "hero-level", html: "Lv." + lvl + "<span class='lv-max'>/" + LW.Config.HERO_MAX_LEVEL + "</span>" }),
+      this.el("button", { class: "btn-detail", onclick: () => this._heroDetail(id) }, [
+        this.el("span", { class: "detail-i", text: "ⓘ" }), this.el("span", { text: " Details" }),
+      ]),
+    ]));
+    wrap.appendChild(idblock);
+
+    // --- Stats panel (HP / ATK / RNG / SPD) ---
+    const statRow = (icon, label, val) => this.el("div", { class: "hstat" }, [
+      this.el("span", { class: "hstat-ic", text: icon }),
+      this.el("span", { class: "hstat-label", text: label }),
+      this.el("span", { class: "hstat-val", text: String(val) }),
+    ]);
+    wrap.appendChild(this.el("div", { class: "hero-stat-panel" }, [
+      statRow("❤️", "HP", stats.maxHP),
+      statRow("⚔️", "ATK", stats.atk),
+      statRow("🎯", "RNG", Math.round(stats.range)),
+      statRow("⚡", "SPD", (1 / stats.attackInterval).toFixed(2)),
+    ]));
+
+    // --- Skills + actions ---
+    wrap.appendChild(this._heroSkillRow(def, id));
+    if (owned) wrap.appendChild(this._heroActions(def, id, team));
+
     return wrap;
   }
 

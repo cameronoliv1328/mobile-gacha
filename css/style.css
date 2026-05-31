@@ -454,3 +454,133 @@ body {
 .affix-name { font-size: 11px; font-weight: 700; }
 .affix-desc { font-size: 9px; color: var(--muted); text-align: center; line-height: 1.2; }
 .affix-reward { font-size: 10px; font-weight: 800; color: var(--gold-2); }
+
+/* ===================================================================== *
+ *  Hero inspection screen (full-screen, image-like)
+ * ===================================================================== */
+
+/* "MAX" tag on a fully-collected roster card (retired Legendaries). */
+.hero-card-max {
+  position: absolute; top: 5px; right: 5px; z-index: 2;
+  font-size: 9px; font-weight: 900; letter-spacing: 0.5px;
+  color: #2a1e06; background: linear-gradient(180deg, #ffe08a, #e6a32a);
+  border-radius: 5px; padding: 1px 5px;
+  box-shadow: 0 0 8px rgba(240, 185, 66, 0.5);
+}
+
+.hero-screen { gap: 12px; }
+
+/* Portrait stage */
+.hero-screen .hero-stage {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(180deg, #232c40, #11151f);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.55);
+  flex: 0 0 auto;
+}
+.hero-screen .hero-stage::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(110% 80% at 50% 16%, var(--elem, #fff), transparent 62%);
+  opacity: 0.32; pointer-events: none;
+}
+.hero-screen .hero-stage::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(80% 50% at 50% 100%, rgba(0, 0, 0, 0.55), transparent 70%);
+  pointer-events: none;
+}
+
+.hero-screen .hero-portrait { position: absolute; inset: 0; display: grid; place-items: end center; }
+.hero-portrait-canvas {
+  width: 88%; height: auto; display: block; position: relative; z-index: 1;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.6));
+}
+
+.hero-screen .hero-tags {
+  position: absolute; top: 10px; left: 10px; z-index: 3;
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(8, 10, 16, 0.62); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 700;
+}
+.hero-tag-ic { font-size: 12px; }
+
+.hero-affinity { position: absolute; top: 10px; right: 10px; z-index: 3; display: flex; gap: 6px; }
+.aff-badge {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 14px;
+  background: rgba(8, 10, 16, 0.62); border: 1px solid var(--line);
+}
+.aff-badge.dmg-magic { color: #d39bff; }
+.aff-badge.dmg-physical { color: #ff9a6b; }
+
+.hero-exclusive {
+  position: absolute; bottom: 10px; left: 10px; z-index: 3;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(8, 10, 16, 0.72); border: 1px solid rgba(240, 185, 66, 0.6);
+  color: var(--gold-2); border-radius: 8px; padding: 4px 10px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+}
+.excl-ic { font-size: 13px; }
+
+/* Identity block */
+.hero-id { display: flex; flex-direction: column; gap: 6px; }
+.hero-stars { display: flex; gap: 2px; }
+.hstar { color: #ffce5a; font-size: 19px; line-height: 1; text-shadow: 0 0 6px rgba(255, 206, 90, 0.55); }
+.hero-screen .hero-name { font-family: Georgia, serif; font-size: 34px; font-weight: 800; line-height: 1; }
+.hero-rarity-badge {
+  align-self: flex-start; font-weight: 800; font-size: 13px;
+  padding: 3px 16px; border-radius: 8px; letter-spacing: 1px;
+}
+.rar-rare .hero-rarity-badge { background: linear-gradient(180deg, #9fd4ff, #3f86c8); color: #06243a; }
+.rar-epic .hero-rarity-badge { background: linear-gradient(180deg, #d8b0ff, #9148c8); color: #fff; }
+.rar-legendary .hero-rarity-badge { background: linear-gradient(180deg, #ffe08a, #e6a32a); color: #3a2a08; box-shadow: 0 0 14px rgba(240, 185, 66, 0.5); }
+
+.hero-level-row { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
+.hero-screen .hero-level { font-size: 20px; font-weight: 800; }
+.hero-level .lv-max { color: var(--muted); font-size: 15px; font-weight: 700; }
+.btn-detail {
+  background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); color: var(--ink);
+  border-radius: 8px; padding: 6px 13px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+}
+.btn-detail:active { transform: translateY(1px); }
+.detail-i { opacity: 0.8; }
+
+/* Stats panel */
+.hero-stat-panel {
+  background: rgba(0, 0, 0, 0.28); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 4px 14px;
+}
+.hstat { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); }
+.hstat:last-child { border-bottom: none; }
+.hstat-ic { width: 22px; text-align: center; font-size: 15px; }
+.hstat-label { flex: 1; color: var(--muted); font-weight: 700; font-size: 13px; letter-spacing: 0.5px; }
+.hstat-val { font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
+
+/* Skill row */
+.hero-skill-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.hskill {
+  position: relative; width: 54px; height: 54px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 32%, rgba(255, 255, 255, 0.14), rgba(8, 10, 16, 0.72));
+  border: 2px solid var(--sk, #fff);
+}
+.hskill-ic { font-size: 22px; }
+.hskill-badge {
+  position: absolute; bottom: -3px; right: -3px;
+  min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+  background: var(--bg); border: 1px solid var(--line);
+  font-size: 11px; font-weight: 800; line-height: 16px; text-align: center;
+}
+.hskill.ult .hskill-badge { background: var(--gold); color: #2a1e06; border-color: var(--gold-2); }
+.hskill.locked { opacity: 0.45; filter: grayscale(0.7); }
+.hskill-lock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; }
+
+/* Actions */
+.hero-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; padding-bottom: 6px; }
+.hero-actions .btn-primary { width: 100%; }

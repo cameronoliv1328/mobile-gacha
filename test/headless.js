@@ -197,20 +197,62 @@ for (let i = 0; i < 400; i++) {
 assert(legCt === 0, "regular banner yields no Legendary");
 assert(rareCt > epicCt, "regular banner mostly Rare (" + rareCt + " vs " + epicCt + ")");
 
-// Epic pity: a Legendary must appear at least every (pity+1) pulls.
+// Epic pity: while Legendaries remain in the pool, one must appear at least
+// every (pity+1) pulls. (Once every Legendary is fully collected they retire
+// from the pool and the banner can no longer award one — covered separately.)
 game.state.epicCrystals = 1000;
 game.state.epicPity = 0;
 let sincelego = 0, maxGap = 0, pityHits = 0;
 for (let i = 0; i < 300; i++) {
+  const legendsLeft = game.summon.legendariesRemaining();
   const pityWasMax = game.state.epicPity >= LW.Config.gacha.epic.pity;
   const r = game.summon.roll("epic");
-  if (pityWasMax) { assert(r.rarity === "Legendary", "pity forces Legendary"); pityHits++; }
-  if (r.rarity === "Legendary") { maxGap = Math.max(maxGap, sincelego); sincelego = 0; }
-  else sincelego++;
+  if (legendsLeft > 0) {
+    if (pityWasMax) { assert(r.rarity === "Legendary", "pity forces Legendary"); pityHits++; }
+    if (r.rarity === "Legendary") { maxGap = Math.max(maxGap, sincelego); sincelego = 0; }
+    else sincelego++;
+  }
 }
 assert(maxGap <= LW.Config.gacha.epic.pity, "never exceed pity gap (maxGap=" + maxGap + ")");
 assert(pityHits > 0, "pity actually triggered at least once");
 console.log("  gacha ok — regular[R:" + rareCt + " E:" + epicCt + " L:" + legCt + "]  epic maxGap=" + maxGap + " pityHits=" + pityHits);
+
+/* ---- Legendary retirement: a maxed Legendary leaves the wish pool ------- */
+console.log("— legendary retirement —");
+LW.SaveGame.clear();
+const rg = new LW.GameInstance();
+const maxC = rg.heroes.maxCopies();
+assert(maxC === Math.max.apply(null, LW.Config.ABILITY_UNLOCKS), "maxCopies = last ability unlock");
+const legends = LW.HeroData.list.filter((h) => h.rarity === "Legendary").map((h) => h.id);
+assert(legends.length > 0, "there are Legendary heroes");
+
+const legId = legends[0];
+rg.heroes.addHero(legId); // own it (copies 0)
+assert(!rg.heroes.isRetired(legId), "freshly owned legendary is not retired");
+for (let i = 0; i < maxC; i++) rg.heroes.addHero(legId); // collect every copy
+assert(rg.heroes.copies(legId) === maxC, "collected all copies of the legendary");
+assert(rg.heroes.isMaxed(legId) && rg.heroes.isRetired(legId), "maxed legendary is retired");
+assert(!rg.summon.availableOfRarity("Legendary").some((h) => h.id === legId), "retired legendary left the pool");
+
+// It can never be pulled again: force many Legendary rolls; the maxed one must
+// never reappear and its copy count must never exceed the max.
+rg.state.epicCrystals = 100000;
+for (let i = 0; i < 600; i++) {
+  rg.state.epicPity = LW.Config.gacha.epic.pity; // force a Legendary roll
+  const r = rg.summon.roll("epic");
+  assert(r.def.id !== legId, "retired legendary was pulled again");
+}
+assert(rg.heroes.copies(legId) === maxC, "retired legendary copy count unchanged");
+
+// With EVERY Legendary retired, a forced Legendary roll drops a rarity instead
+// of ever producing a duplicate legend.
+for (const id of legends) rg.state.heroes[id] = { level: 1, copies: maxC };
+assert(rg.summon.legendariesRemaining() === 0, "all legendaries retired");
+rg.state.epicPity = LW.Config.gacha.epic.pity;
+const dg = rg.summon.roll("epic");
+assert(dg.rarity !== "Legendary" && dg.downgraded, "forced legendary downgrades when pool empty");
+for (const id of legends) assert(rg.heroes.copies(id) <= maxC, "no legendary exceeds max copies");
+console.log("  legendary retirement ok");
 
 /* ===================================================================== *
  *  Duplicate abilities + element synergy
@@ -473,6 +515,18 @@ for (const screen of ["campaign", "summon", "roster", "menu"]) ui.go(screen);
 ui._heroDetail("fighter_brick"); // opens modal
 assert(getEl("modal-root").children.length > 0, "hero detail modal opened");
 ui.closeModal();
+
+// Full-screen hero inspection screen (portrait / stars / stats / skills).
+ui._inspectHero("fighter_brick");
+assert(ui.screen === "hero", "inspect switches to the hero screen");
+assert(getEl("ui-root").querySelector(".hero-screen") != null, "hero inspection screen rendered");
+assert(getEl("ui-root").querySelector(".hero-stars") != null, "hero screen shows rarity stars");
+assert(getEl("ui-root").querySelector(".hero-stat-panel") != null, "hero screen shows the stats panel");
+assert(getEl("ui-root").querySelector(".hero-skill-row") != null, "hero screen shows the skill row");
+ui._heroDetail("fighter_brick"); // Details button opens the modal
+assert(getEl("modal-root").children.length > 0, "details modal opens from the hero screen");
+ui.closeModal();
+ui.go("roster");
 
 // Summon result modal
 game.state.regularCrystals = 10;
