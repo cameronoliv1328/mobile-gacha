@@ -35,18 +35,99 @@ LW.HeroCollection = class HeroCollection {
       .filter(Boolean);
   }
 
-  /* Add a hero from a summon. Returns { isNew, dupeGold }. */
+  /* Add a hero from a summon. On a duplicate, increments the copy counter
+   * (which can unlock an ability tier) and grants gold.
+   * Returns { isNew, dupeGold, copies, unlockedTier, tiers }. */
   addHero(id) {
+    const def = LW.HeroData.byId(id);
     if (this.isOwned(id)) {
-      const def = LW.HeroData.byId(id);
-      const gold = LW.Config.reward.dupeGold[def.rarity] || 50;
+      const h = this.state.heroes[id];
+      const before = this.unlockedTiers(id);
+      h.copies = (h.copies || 0) + 1;
+      const after = this.unlockedTiers(id);
+      const base = LW.Config.reward.dupeGold[def.rarity] || 50;
+      // Reduced gold while abilities are still unlocking, full once maxed.
+      const gold = after >= 3 ? base : Math.round(base * 0.5);
       this.game.addGold(gold, true);
-      return { isNew: false, dupeGold: gold };
+      this.game.persist();
+      this.game.emit("change");
+      return { isNew: false, dupeGold: gold, copies: h.copies, unlockedTier: after > before ? after : 0, tiers: after };
     }
-    this.state.heroes[id] = { level: 1 };
+    this.state.heroes[id] = { level: 1, copies: 0 };
     this.game.persist();
     this.game.emit("change");
-    return { isNew: true, dupeGold: 0 };
+    return { isNew: true, dupeGold: 0, copies: 0, unlockedTier: 0, tiers: 0 };
+  }
+
+  /* ---- Duplicate abilities + element --------------------------------- */
+
+  copies(id) {
+    const h = this.state.heroes[id];
+    return h ? h.copies || 0 : 0;
+  }
+
+  // Number of ability tiers unlocked (0..3) from the copy count.
+  unlockedTiers(id) {
+    const c = this.copies(id);
+    let n = 0;
+    for (const need of LW.Config.ABILITY_UNLOCKS) if (c >= need) n++;
+    return n;
+  }
+
+  copiesForTier(tier) {
+    return LW.Config.ABILITY_UNLOCKS[tier - 1];
+  }
+
+  isAttuned(id) {
+    return this.unlockedTiers(id) >= 1; // Tier I = Attunement
+  }
+
+  element(id) {
+    const d = LW.HeroData.byId(id);
+    return d ? d.element : null;
+  }
+
+  // The 3 abilities of a hero with locked/unlocked state.
+  abilities(id) {
+    const d = LW.HeroData.byId(id);
+    if (!d) return [];
+    const defs = LW.Config.ABILITIES[d.class] || [];
+    const n = this.unlockedTiers(id);
+    return defs.map((a, i) => ({
+      tier: i + 1,
+      name: a.name,
+      desc: a.desc,
+      unlocked: i < n,
+      copiesNeeded: LW.Config.ABILITY_UNLOCKS[i],
+    }));
+  }
+
+  // Aggregate combat mods from every UNLOCKED ability tier.
+  abilityMods(id) {
+    const mods = {
+      atkMult: 1, hpMult: 1, asMult: 1, rangeMult: 1, splashMult: 1,
+      extraProjectiles: 0, reflect: 0, surviveOnce: false, attuned: false,
+      slowOnHit: null, ult: null,
+    };
+    const d = LW.HeroData.byId(id);
+    if (!d) return mods;
+    const defs = LW.Config.ABILITIES[d.class] || [];
+    const n = this.unlockedTiers(id);
+    for (let i = 0; i < n; i++) {
+      const m = defs[i].mods || {};
+      if (m.atkMult) mods.atkMult *= m.atkMult;
+      if (m.hpMult) mods.hpMult *= m.hpMult;
+      if (m.asMult) mods.asMult *= m.asMult;
+      if (m.rangeMult) mods.rangeMult *= m.rangeMult;
+      if (m.splashMult) mods.splashMult *= m.splashMult;
+      if (m.extraProjectiles) mods.extraProjectiles += m.extraProjectiles;
+      if (m.reflect) mods.reflect = Math.max(mods.reflect, m.reflect);
+      if (m.surviveOnce) mods.surviveOnce = true;
+      if (m.attune) mods.attuned = true;
+      if (m.slowOnHit) mods.slowOnHit = m.slowOnHit;
+      if (m.ult) mods.ult = m.ult;
+    }
+    return mods;
   }
 
   /* ---- Leveling ------------------------------------------------------- */
@@ -99,6 +180,20 @@ LW.HeroCollection = class HeroCollection {
 
   getTeam() {
     return Object.assign({}, this.state.team);
+  }
+
+  // Element synergy for the currently selected team (for meta UI preview).
+  teamSynergy() {
+    const t = this.state.team;
+    const deployed = [];
+    for (const slot of ["bridge", "left", "right"]) {
+      const id = t[slot];
+      if (!id) continue;
+      const d = LW.HeroData.byId(id);
+      if (!d) continue;
+      deployed.push({ element: d.element, attuned: this.isAttuned(id) });
+    }
+    return LW.Synergy.compute(deployed);
   }
 
   // Which positions a class may occupy.

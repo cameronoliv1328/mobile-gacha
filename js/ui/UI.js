@@ -90,6 +90,39 @@ LW.UI = class UI {
     for (const b of this._currencyBars) b._refresh();
   }
 
+  _elementBadge(elName, withName) {
+    const E = LW.Config.ELEMENTS[elName];
+    if (!E) return this.el("span");
+    const kids = [this.el("span", { class: "elem-ic", text: E.icon })];
+    if (withName) kids.push(this.el("span", { text: " " + E.name }));
+    return this.el("span", { class: "elem-badge", style: "color:" + E.color + ";border-color:" + E.color }, kids);
+  }
+
+  // Small dots showing how many duplicate-ability tiers are unlocked (0..3).
+  _tierDots(id) {
+    const tiers = this.game.heroes.unlockedTiers(id);
+    const row = this.el("div", { class: "tier-dots" });
+    for (let i = 0; i < 3; i++) row.appendChild(this.el("span", { class: "tdot" + (i < tiers ? " on" : "") + (i === 2 ? " ult" : "") }));
+    return row;
+  }
+
+  _synergyBanner(syn) {
+    syn = syn || this.game.heroes.teamSynergy();
+    const wrap = this.el("div", { class: "synergy-banner tier-" + syn.tier });
+    if (!syn || syn.tier === "none") {
+      wrap.appendChild(this.el("span", { class: "syn-none", text: "No element synergy — match elements for a bonus" }));
+      return wrap;
+    }
+    const E = LW.Config.ELEMENTS[syn.element];
+    wrap.appendChild(this.el("span", { class: "syn-ic", style: "color:" + E.color, text: E.icon }));
+    const head = syn.tier === "major" ? E.name + " ×3" : E.name + " ×2";
+    wrap.appendChild(this.el("span", { class: "syn-txt", text: head + (syn.label ? " — " + syn.label.replace(/^.*— /, "") : "") }));
+    const bonus =
+      "+" + Math.round((syn.atkMult - 1) * 100) + "% ATK" + (syn.hpMult > 1 ? " · +" + Math.round((syn.hpMult - 1) * 100) + "% HP" : "");
+    wrap.appendChild(this.el("span", { class: "syn-bonus", text: bonus }));
+    return wrap;
+  }
+
   header(title, onBack) {
     const kids = [];
     if (onBack) kids.push(this.el("button", { class: "btn-icon back", text: "‹", onclick: onBack }));
@@ -125,18 +158,18 @@ LW.UI = class UI {
       ctx.fillText("?", size / 2, size / 2);
       return c;
     }
-    LW.Sprites.humanoid(ctx, {
-      x: size / 2,
-      y: size * 0.86,
-      scale: size / 62,
-      cls: def.class,
-      primary: def.theme.primary,
-      secondary: def.theme.secondary,
-      trim: def.theme.trim,
-      facing: 1,
-      isHero: true,
-      bob: 0,
-    });
+    const img = LW.Sprites.spriteFor(def.id);
+    if (img) {
+      const s = Math.min((size * 0.98) / img.width, (size * 0.98) / img.height);
+      const w = img.width * s;
+      const h = img.height * s;
+      ctx.drawImage(img, size / 2 - w / 2, size - h - 1, w, h);
+    } else {
+      LW.Sprites.humanoid(ctx, {
+        x: size / 2, y: size * 0.86, scale: size / 62, cls: def.class,
+        primary: def.theme.primary, secondary: def.theme.secondary, trim: def.theme.trim, facing: 1, isHero: true, bob: 0,
+      });
+    }
     return c;
   }
 
@@ -145,17 +178,18 @@ LW.UI = class UI {
     c.width = size;
     c.height = size;
     const ctx = c.getContext("2d");
-    LW.Sprites.enemy(ctx, {
-      x: size / 2,
-      y: size * 0.82,
-      scale: (size / 80) * (def.isBoss ? 0.7 : 1.2),
-      radius: def.radius,
-      color: def.color,
-      accent: def.accent,
-      shape: def.shape,
-      facing: 1,
-      t: 0,
-    });
+    const img = LW.Sprites.spriteFor(def.id);
+    if (img) {
+      const s = Math.min((size * 0.96) / img.width, (size * 0.96) / img.height);
+      const w = img.width * s;
+      const h = img.height * s;
+      ctx.drawImage(img, size / 2 - w / 2, size - h - 1, w, h);
+    } else {
+      LW.Sprites.enemy(ctx, {
+        x: size / 2, y: size * 0.82, scale: (size / 80) * (def.isBoss ? 0.7 : 1.2),
+        radius: def.radius, color: def.color, accent: def.accent, shape: def.shape, facing: 1, t: 0,
+      });
+    }
     return c;
   }
 
@@ -316,7 +350,7 @@ LW.UI = class UI {
         this.el("button", { class: "btn-text", text: "Edit ›", onclick: () => this.go("roster") }),
       ])
     );
-    return strip;
+    return this.el("div", { class: "team-strip-wrap" }, [strip, this._synergyBanner()]);
   }
 
   _launch(cityIndex) {
@@ -415,8 +449,16 @@ LW.UI = class UI {
       const cell = this.el("div", { class: "result-cell rar-" + r.rarity.toLowerCase() });
       cell.appendChild(this.heroThumb(r.def, results.length > 1 ? 70 : 130));
       cell.appendChild(this.el("div", { class: "result-name", text: r.def.name }));
-      cell.appendChild(this.el("div", { class: "result-rarity", text: r.rarity + (r.forced ? " ★pity" : "") }));
-      cell.appendChild(this.el("div", { class: "result-tag", text: r.isNew ? "NEW!" : "+" + r.dupeGold + " gold" }));
+      cell.appendChild(
+        this.el("div", { class: "result-rarity" }, [this.el("span", { text: r.rarity + (r.forced ? " ★pity " : " ") }), this._elementBadge(r.def.element)])
+      );
+      let tag = r.isNew ? "NEW!" : "Copy " + r.copies + " · +" + r.dupeGold + "g";
+      let tagCls = "result-tag";
+      if (r.unlockedTier) {
+        tag = "Ability " + ["I", "II", "III"][r.unlockedTier - 1] + " unlocked!";
+        tagCls += " ability";
+      }
+      cell.appendChild(this.el("div", { class: tagCls, text: tag }));
       grid.appendChild(cell);
     }
     const body = this.el("div", { class: "summon-result rar-best-" + bestRank }, [
@@ -449,10 +491,14 @@ LW.UI = class UI {
           class: "hero-card" + (owned ? "" : " unowned") + " rar-" + def.rarity.toLowerCase(),
           onclick: owned ? () => this._heroDetail(def.id) : null,
         });
+        const eb = this._elementBadge(def.element);
+        eb.classList.add("card-elem");
+        card.appendChild(eb);
         card.appendChild(this.heroThumb(def, 64, owned));
         card.appendChild(this.el("div", { class: "hero-card-name", text: owned ? def.name : "???" }));
         if (owned) card.appendChild(this.el("div", { class: "hero-card-lv", text: "Lv " + this.game.heroes.level(def.id) }));
         card.appendChild(this.el("div", { class: "hero-card-rar", text: def.rarity }));
+        if (owned) card.appendChild(this._tierDots(def.id));
         grid.appendChild(card);
       }
       wrap.appendChild(grid);
@@ -471,7 +517,7 @@ LW.UI = class UI {
       this.heroThumb(def, 110),
       this.el("div", { class: "hd-meta" }, [
         this.el("div", { class: "hd-name", text: def.name }),
-        this.el("div", { class: "hd-class", text: def.rarity + " " + def.class }),
+        this.el("div", { class: "hd-class" }, [this.el("span", { text: def.rarity + " " + def.class + "  " }), this._elementBadge(def.element, true)]),
         this.el("div", { class: "hd-blurb muted", text: def.blurb }),
       ]),
     ]);
@@ -487,6 +533,28 @@ LW.UI = class UI {
       statRow("Support", "2× " + def.class + " (" + Math.round(LW.Config.SUPPORT_HP_PCT * 100) + "% HP / " + Math.round(LW.Config.SUPPORT_ATK_PCT * 100) + "% ATK)"),
     ]);
     body.appendChild(grid);
+
+    // Duplicate special abilities (unlocked by collecting copies).
+    const abil = this.el("div", { class: "abilities" });
+    abil.appendChild(
+      this.el("div", { class: "abil-head" }, [
+        this.el("span", { text: "Duplicate Abilities" }),
+        this.el("span", { class: "copies-count", text: "Copies " + this.game.heroes.copies(id) }),
+      ])
+    );
+    for (const a of this.game.heroes.abilities(id)) {
+      const row = this.el("div", { class: "abil-row" + (a.unlocked ? " unlocked" : "") + (a.tier === 3 ? " ultimate" : "") });
+      row.appendChild(this.el("div", { class: "abil-tier", text: ["I", "II", "III"][a.tier - 1] }));
+      row.appendChild(
+        this.el("div", { class: "abil-mid" }, [
+          this.el("div", { class: "abil-name", text: a.name + (a.tier === 3 ? "  ★" : "") }),
+          this.el("div", { class: "abil-desc", text: a.desc }),
+        ])
+      );
+      row.appendChild(this.el("div", { class: "abil-state", text: a.unlocked ? "✓" : a.copiesNeeded + " copies" }));
+      abil.appendChild(row);
+    }
+    body.appendChild(abil);
 
     // Level up
     const cost = this.game.heroes.levelUpCost(id);
@@ -570,9 +638,30 @@ LW.UI = class UI {
       this.el("div", { class: "cityhp-bar" }, [cityHpFill]),
       cityHpText,
     ]);
+    const synergy = this.el("div", { class: "hud-synergy", style: "display:none" });
+    const skillBar = this.el("div", { class: "skill-bar" });
     hud.appendChild(top);
     hud.appendChild(cityHp);
-    this.hudRefs = { wave, cityHpFill, cityHpText, gold, speedBtn, pauseBtn };
+    hud.appendChild(synergy);
+    hud.appendChild(skillBar);
+    this.hudRefs = { wave, cityHpFill, cityHpText, gold, speedBtn, pauseBtn, synergy, synShown: false, skillBar, skillBtns: {}, skillsBuilt: false };
+  }
+
+  // One tap-to-cast button per deployed hero (built once heroes exist).
+  _buildSkillBar() {
+    const bar = LW.util.clear(this.hudRefs.skillBar);
+    this.hudRefs.skillBtns = {};
+    for (const s of this.battle.heroSkills()) {
+      const def = LW.HeroData.byId(s.heroId);
+      const btn = this.el("button", { class: "skill-btn", title: s.name, onclick: () => this.app.tapSkill(s.pos) });
+      btn.appendChild(this.heroThumb(def, 52));
+      const overlay = this.el("div", { class: "skill-cd" });
+      btn.appendChild(overlay);
+      btn.appendChild(this.el("div", { class: "skill-name", text: s.name }));
+      bar.appendChild(btn);
+      this.hudRefs.skillBtns[s.pos] = { btn, overlay };
+    }
+    this.hudRefs.skillsBuilt = true;
   }
 
   updateBattleHUD() {
@@ -587,6 +676,32 @@ LW.UI = class UI {
     this.hudRefs.cityHpText.textContent = h.cityHP + " / " + h.cityMaxHP;
     this.hudRefs.speedBtn.textContent = this.app.speed === 2 ? "»»" : "»";
     this.hudRefs.speedBtn.classList.toggle("active", this.app.speed === 2);
+
+    // Synergy is constant for a battle — populate it once when available.
+    if (!this.hudRefs.synShown && h.synergy && h.synergy.tier !== "none") {
+      this.hudRefs.synShown = true;
+      const E = LW.Config.ELEMENTS[h.synergy.element];
+      const label = h.synergy.tier === "major" ? E.name + " Synergy" : E.name + " ×2";
+      LW.util.clear(this.hudRefs.synergy);
+      this.hudRefs.synergy.style.display = "";
+      this.hudRefs.synergy.appendChild(this.el("span", { class: "hud-syn-ic", style: "color:" + E.color, text: E.icon }));
+      this.hudRefs.synergy.appendChild(this.el("span", { text: " " + label }));
+    }
+
+    // Skill bar: build once heroes are deployed, then update cooldowns.
+    if (!this.hudRefs.skillsBuilt) {
+      if (this.battle.heroSkills().length) this._buildSkillBar();
+    } else {
+      for (const s of this.battle.heroSkills()) {
+        const ref = this.hudRefs.skillBtns[s.pos];
+        if (!ref) continue;
+        const frac = s.cooldown > 0 ? s.cd / s.cooldown : 0;
+        ref.overlay.style.height = Math.max(0, Math.min(1, frac)) * 100 + "%";
+        ref.btn.classList.toggle("ready", s.ready);
+        ref.btn.classList.toggle("dead", !s.alive);
+        ref.btn.classList.toggle("armed", this.app.armedSkill === s.pos);
+      }
+    }
   }
 
   _onPhase(p) {
@@ -641,9 +756,61 @@ LW.UI = class UI {
     panel.appendChild(gold);
     panel._goldVal = gold.querySelector(".pg-val");
 
-    panel.appendChild(
-      this.el("button", { class: "btn btn-primary big", text: "Continue → Wave " + (this.battle.waveIndex + 2), onclick: () => this.battle.continueToNextWave() })
-    );
+    // Threat preview of the next wave's main enemy types.
+    const preview = this.battle.threatPreview ? this.battle.threatPreview() : [];
+    if (preview.length) {
+      const isBoss = this.battle.nextWaveData && this.battle.nextWaveData.isBoss;
+      const pv = this.el("div", { class: "threat-preview" });
+      pv.appendChild(this.el("div", { class: "threat-label", text: "Incoming" + (isBoss ? "  —  BOSS WAVE" : "") }));
+      const row = this.el("div", { class: "threat-row" });
+      for (const t of preview) {
+        if (!t.def) continue;
+        const cell = this.el("div", { class: "threat-cell", title: t.def.name });
+        cell.appendChild(this.enemyThumb(t.def, 36));
+        cell.appendChild(this.el("span", { class: "threat-n", text: "×" + t.n }));
+        row.appendChild(cell);
+      }
+      pv.appendChild(row);
+      panel.appendChild(pv);
+    }
+
+    // Continue button (label reflects the chosen wave affix).
+    const contBtn = this.el("button", { class: "btn btn-primary big", onclick: () => this.battle.continueToNextWave() });
+    const updateCont = () => {
+      const a = this.battle.pendingAffix;
+      contBtn.textContent = "Continue → Wave " + (this.battle.waveIndex + 2) + (a && a.id !== "none" ? "  ·  " + a.name : "");
+    };
+
+    // Push-your-luck: choose the next wave's modifier (tougher = more loot).
+    const options = this.battle.waveOptions || [];
+    if (options.length) {
+      const af = this.el("div", { class: "affix-choice" });
+      af.appendChild(this.el("div", { class: "affix-label", text: "Choose the next wave — tougher modifiers drop more loot" }));
+      const arow = this.el("div", { class: "affix-row" });
+      const rebuildAffix = () => {
+        LW.util.clear(arow);
+        options.forEach((o, i) => {
+          const a = o.affix;
+          const sel = this.battle.pendingAffix && this.battle.pendingAffix.id === a.id;
+          const chip = this.el("button", {
+            class: "affix-chip" + (sel ? " sel" : ""),
+            title: a.desc,
+            onclick: () => { this.battle.chooseWaveOption(i); rebuildAffix(); updateCont(); },
+          });
+          chip.appendChild(this.el("div", { class: "affix-ic", text: a.icon }));
+          chip.appendChild(this.el("div", { class: "affix-name", text: a.name }));
+          chip.appendChild(this.el("div", { class: "affix-desc", text: a.desc }));
+          chip.appendChild(this.el("div", { class: "affix-reward", text: a.reward > 1 ? "+" + Math.round((a.reward - 1) * 100) + "% loot" : "—" }));
+          arow.appendChild(chip);
+        });
+      };
+      rebuildAffix();
+      af.appendChild(arow);
+      panel.appendChild(af);
+    }
+
+    updateCont();
+    panel.appendChild(contBtn);
     this.battleOverlay.appendChild(panel);
     requestAnimationFrame(() => panel.classList.add("show"));
   }

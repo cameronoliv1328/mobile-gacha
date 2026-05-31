@@ -375,5 +375,31 @@ LW.Sprites = (function () {
     ctx.fill();
   }
 
-  return { shadow, healthBar, humanoid, enemy, projectile, roundRect };
+  /* ---- Painted sprite billboards (with procedural fallback) ----------- */
+
+  // Draws a transparent painted sprite anchored by the feet at (x, y), with a
+  // ground shadow and an animation transform (facing-space: +x = forward).
+  function drawSprite(ctx, img, o) {
+    const h = o.h;
+    const w = h * (img.width / img.height);
+    const dir = o.facing < 0 ? -1 : 1;
+    const tr = o.tr || { ox: 0, oy: 0, sx: 1, sy: 1, rot: 0 };
+    shadow(ctx, o.x, o.shadowY != null ? o.shadowY : o.y, w * 0.32, h * 0.055);
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.scale(dir, 1); // face: now +x points "forward"
+    ctx.translate(tr.ox || 0, tr.oy || 0);
+    if (tr.rot) ctx.rotate(tr.rot);
+    ctx.scale(tr.sx || 1, tr.sy || 1);
+    ctx.drawImage(img, -w / 2, -h, w, h);
+    ctx.restore();
+  }
+
+  function spriteFor(id) {
+    const a = LW.assets && LW.assets.sprites;
+    const img = a && a[id];
+    return img && img.complete && img.naturalWidth ? img : null;
+  }
+
+  return { shadow, healthBar, humanoid, enemy, projectile, roundRect, drawSprite, spriteFor };
 })();

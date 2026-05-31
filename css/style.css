@@ -385,3 +385,72 @@ body {
 }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.good { border-color: rgba(84, 192, 116, 0.5); }
+
+/* ===================================================================== *
+ *  Elements / duplicate abilities / synergy
+ * ===================================================================== */
+
+.elem-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 800; border: 1px solid; border-radius: 6px; padding: 0 5px; line-height: 1.5; }
+.elem-ic { font-size: 11px; }
+
+.hero-card { position: relative; }
+.card-elem { position: absolute; top: 5px; left: 5px; padding: 0 3px; font-size: 10px; background: rgba(8, 10, 16, 0.55); z-index: 2; }
+.tier-dots { display: flex; gap: 3px; justify-content: center; margin-top: 3px; }
+.tdot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); border: 1px solid var(--line); }
+.tdot.on { background: var(--blue); }
+.tdot.on.ult { background: var(--gold); box-shadow: 0 0 5px var(--gold); }
+
+.team-strip-wrap { display: flex; flex-direction: column; gap: 8px; }
+.synergy-banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; font-size: 12px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--line); }
+.synergy-banner.tier-minor { border-color: rgba(90, 169, 230, 0.4); }
+.synergy-banner.tier-major { border-color: rgba(240, 185, 66, 0.5); background: rgba(240, 185, 66, 0.08); }
+.syn-ic { font-size: 16px; }
+.syn-txt { font-weight: 700; flex: 1; }
+.syn-bonus { color: var(--gold-2); font-weight: 800; white-space: nowrap; }
+.syn-none { color: var(--muted); }
+
+.abilities { margin: 14px 0; }
+.abil-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.copies-count { color: var(--gold-2); font-size: 12px; }
+.abil-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--line); margin-bottom: 6px; opacity: 0.5; }
+.abil-row.unlocked { opacity: 1; }
+.abil-row.ultimate { border-color: rgba(240, 185, 66, 0.4); }
+.abil-row.unlocked.ultimate { background: rgba(240, 185, 66, 0.1); box-shadow: inset 0 0 0 1px rgba(240, 185, 66, 0.3); }
+.abil-tier { font-family: Georgia, serif; font-weight: 800; font-size: 16px; text-align: center; color: var(--muted); }
+.abil-row.unlocked .abil-tier { color: var(--gold-2); }
+.abil-name { font-weight: 700; font-size: 13px; }
+.abil-desc { font-size: 11px; color: var(--muted); }
+.abil-state { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.abil-row.unlocked .abil-state { color: var(--green); }
+
+.result-tag.ability { color: #2a1e06; background: var(--gold); border-radius: 6px; padding: 1px 7px; }
+
+.hud-synergy { margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; background: rgba(8, 10, 16, 0.5); padding: 4px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; width: fit-content; }
+.hud-syn-ic { font-size: 14px; }
+
+/* ---- Active-skill bar ------------------------------------------------- */
+.skill-bar { position: absolute; bottom: 22px; left: 0; right: 0; display: flex; gap: 14px; justify-content: center; pointer-events: none; }
+.skill-btn { position: relative; width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.22); background: rgba(8, 10, 16, 0.6); overflow: hidden; padding: 0; cursor: pointer; pointer-events: auto; transition: box-shadow 0.15s, border-color 0.15s; }
+.skill-btn .thumb { width: 100%; height: 100%; border-radius: 50%; box-shadow: none; }
+.skill-btn.ready { border-color: var(--gold); box-shadow: 0 0 12px rgba(240, 185, 66, 0.55); }
+.skill-btn.armed { border-color: #fff; box-shadow: 0 0 16px #fff; transform: scale(1.06); }
+.skill-btn.dead { opacity: 0.4; filter: grayscale(1); }
+.skill-cd { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; background: rgba(0, 0, 0, 0.6); pointer-events: none; }
+.skill-name { position: absolute; left: -10px; right: -10px; bottom: -14px; font-size: 9px; font-weight: 700; text-align: center; color: rgba(255, 255, 255, 0.7); white-space: nowrap; text-shadow: 0 1px 2px #000; pointer-events: none; }
+
+/* ---- Roguelite: threat preview + wave affix choice ------------------- */
+.threat-preview { margin: 12px 0 4px; }
+.threat-label { font-size: 11px; color: var(--muted); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
+.threat-row { display: flex; gap: 12px; }
+.threat-cell { position: relative; }
+.threat-cell canvas { width: 36px; height: 36px; border-radius: 8px; background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px var(--line); }
+.threat-n { position: absolute; bottom: -3px; right: -5px; font-size: 10px; font-weight: 800; color: #fff; background: rgba(8, 10, 16, 0.9); border-radius: 6px; padding: 0 3px; }
+.affix-choice { margin: 12px 0; }
+.affix-label { font-size: 11px; color: var(--muted); margin-bottom: 7px; }
+.affix-row { display: flex; gap: 8px; }
+.affix-chip { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); border-radius: 10px; padding: 8px 4px; cursor: pointer; color: var(--ink); }
+.affix-chip.sel { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold), 0 0 10px rgba(240, 185, 66, 0.3); background: rgba(240, 185, 66, 0.08); }
+.affix-ic { font-size: 18px; line-height: 1; }
+.affix-name { font-size: 11px; font-weight: 700; }
+.affix-desc { font-size: 9px; color: var(--muted); text-align: center; line-height: 1.2; }
+.affix-reward { font-size: 10px; font-weight: 800; color: var(--gold-2); }

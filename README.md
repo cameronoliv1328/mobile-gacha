@@ -3,8 +3,8 @@
 > Hold the bridge. Defend the city.
 
 **Last Wall** is a stylized-fantasy, **portrait / iPhone-style city-defense gacha game**. Monsters
-emerge from a forest at the top of the screen, march down a winding path through an open field,
-and funnel toward a fortified wall with two bastions and a central gate. You deploy **3 heroes** —
+emerge from a forest at the top of the screen, advance down **three lanes** through an open field,
+and funnel toward a fortified wall with three gates and two bastions. You deploy **3 heroes** —
 a **Fighter** holding the bridge choke point and two ranged **Archer/Mage** heroes on the
 bastions — each with **2 matching support units**. Survive 10 waves per city, upgrade between
 waves, earn summon crystals, and pull new heroes from the gacha.
@@ -13,9 +13,9 @@ This repository implements the [`Last Wall` design/build file](#design-source) a
 game** — a single-page, dependency-free app using **vanilla JavaScript + HTML5 Canvas**. The code
 is organized to mirror the Unreal Engine blueprint structure described in the build file.
 
-| Menu | Battle | Upgrades | Summon | Roster |
-|---|---|---|---|---|
-| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![upgrade](docs/screenshots/upgrade.jpg) | ![summon](docs/screenshots/summon.jpg) | ![roster](docs/screenshots/roster.jpg) |
+| Menu | Battle + Skills | Combat 2.0 | Abilities | Synergy | Summon |
+|---|---|---|---|---|---|
+| ![menu](docs/screenshots/menu.jpg) | ![battle](docs/screenshots/battle.jpg) | ![combat](docs/screenshots/combat.jpg) | ![abilities](docs/screenshots/abilities.jpg) | ![synergy](docs/screenshots/synergy.jpg) | ![summon](docs/screenshots/summon.jpg) |
 
 ---
 
@@ -56,7 +56,58 @@ Progress (currencies, heroes, levels, team, campaign) saves automatically to `lo
 ### Gacha rates
 - **Regular banner:** Rare 85% · Epic 15% · Legendary 0%.
 - **Epic banner:** Epic 75% · Legendary 25%, with **pity — a guaranteed Legendary after 5
-  consecutive non-Legendary pulls**. Duplicates convert to gold.
+  consecutive non-Legendary pulls**.
+- New players start with **0 summon crystals** (and the 3 Rare starters) — crystals are earned.
+- Duplicates of an owned hero unlock that hero's **special abilities** (see below); extra copies
+  past the third ability convert to gold.
+
+## Duplicate abilities & element synergy
+
+Two power systems reward collecting and team-building:
+
+**Duplicate abilities** — every hero has **3 special abilities** unlocked by pulling **copies** of
+that hero (at **1 / 2 / 4** copies). The third unlock is the most powerful — a signature *ultimate*
+(e.g. Archer's *Rain of Arrows*, Mage's *Cataclysm*) or game-changer (Fighter's *Unbreakable*:
+cheat death once per wave). Lower tiers add stats and perks (reflect, extra projectile, slow-on-hit…).
+
+**Element synergy** — every hero has an **element** (Ice 🔵 Fire 🔴 Nature 🟢 Storm 🟣); each element
+has one Fighter, Archer and Mage so a full mono-element team is buildable. The 3 deployed heroes'
+elements grant a team bonus:
+- **2 sharing** → minor synergy (+ATK).
+- **3 sharing** → major synergy: team ATK/HP **plus an element effect** — Ice slows, Fire burns,
+  Nature regenerates, Storm attacks faster.
+
+The two systems interlock as the build file describes: a hero's **first duplicate ability is
+"Attunement"**, which **empowers its synergy contribution** — a fully-attuned mono-element team gets
+a stronger synergy bonus.
+
+## Combat depth (2.0)
+
+Clearing a wave is a tactical read, not just an auto-battle:
+
+- **Damage types + elemental affinities.** Hits are physical or magic and carry the hero's element.
+  Enemies have armor/wards, an element weakness (×1.5) / resistance (×0.6) and status immunities —
+  so team/element choice is a per-city puzzle. Damage numbers are colour-coded by effectiveness.
+- **Status combos.** Ice chills → **freezes** (3 stacks, or instantly on a Wet target); a physical
+  hit **shatters** frozen enemies for bonus damage; Fire **burns** (and **ignites** oiled targets for
+  AoE); Water **douses** fire; Storm **shocks** and **chains** through Wet enemies. Mixing elements on
+  a team unlocks the combos.
+- **Enemy archetypes that demand counters.** **Flying** (Harpy — bypasses the Fighter, ranged-only),
+  **Armored** (Frost Knight — weak to magic), **Shielded** (magic half-pierces the shield), **Healer**
+  (Necromancer — focus-kill it), **Splitter** (Slime → slimelets), **Burrower** (Tunneler skips the
+  field), **Berserker** (Wolf/Ogre enrage), **Bannerman** (Warboss buffs nearby). Each is introduced
+  city by city to teach its counter.
+- **Per-hero active skills.** Every deployed hero has a tap-aimed skill on a cooldown — Fighter
+  *Whirlwind* (self AoE + knockback to reset the choke), Archer *Arrow Storm* and Mage *Cataclysm*
+  (aim a burst anywhere in range). The **tier-3 duplicate ability upgrades the skill**. Tap a skill
+  button, then tap the field to cast.
+- **Three lanes.** Enemies advance down three lanes to three gates. The Fighter can only physically
+  block the **centre** lane; the two **side lanes** have no melee blocker and must be cleared by your
+  bastion ranged heroes + turret + skills (ranged auto-prioritise whoever is closest to breaching).
+  You can't hold everything — decide where to commit.
+- **Roguelite waves.** Between waves you get a **threat preview** of the next wave's enemies and a
+  **push-your-luck** choice of wave modifier — Frenzied, Armored, Swarm, Misty (your range is cut),
+  Regenerating, Blood Moon. Tougher affixes pay out more gold + crystals.
 
 ---
 
@@ -67,19 +118,21 @@ Files map directly onto the blueprints from the build file:
 ```
 index.html              # loads all modules in order; portrait stage
 assets/battlefield.jpg  # hand-painted battlefield illustration (drawn each battle)
+assets/sprites/         # 24 painted, transparent character/enemy sprites
 css/style.css           # stylized-fantasy mobile theme
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
   data/
     config.js           # ALL balance constants, layout anchors, spline points
-    heroes.js           # 12 heroes (4 Fighter / 4 Archer / 4 Mage)
-    enemies.js          # 6 enemy types (Slime…Ogre boss)
+    heroes.js           # 14 heroes (4 Fighter / 6 Archer / 4 Mage)
+    enemies.js          # 10 enemy archetypes (Slime…Ogre, Harpy, Knight…)
     levels.js           # procedural 10x10 wave generator
   core/
     SaveGame.js         # BP_LW_SaveGame      - localStorage persistence
     GameInstance.js     # BP_LW_GameInstance  - currencies, progression, pity
     HeroCollection.js   # BP_HeroCollectionManager - ownership, leveling, team, stats
     SummonManager.js    # BP_SummonManager    - rolls, rarity tables, pity
+    Synergy.js          # element team-synergy calculator
   battle/
     Spline.js           # Spline_EnemyPath_Main - Catmull-Rom arc-length path
     BattleMap.js        # BP_BattleMapController - anchors + painted battlefield bg
@@ -90,7 +143,8 @@ js/
     Enemy.js            # BP_EnemyBase        - spline movement + bridge blocking
     Turret.js           # BP_TurretBase
     CityWall.js         # BP_CityWall
-    Projectile.js / Effects.js / Render.js   # VFX + procedural sprite painters
+    Anim.js             # procedural 2-3 frame idle/walk/attack sprite animation
+    Projectile.js / Effects.js / Render.js   # VFX + painted sprite billboards (+ fallback)
   ui/UI.js              # all UMG-style screens, HUD, panels, overlays
   main.js               # App: canvas render loop, battle lifecycle
 test/
@@ -99,8 +153,16 @@ test/
 ```
 
 All tuning lives in **`js/data/config.js`** (class stats, rarity multipliers, level costs, gacha
-tables, upgrade values, layout anchors, the enemy spline). Want a tougher campaign or a different
-fortress layout? Edit the data, not the systems.
+tables, **duplicate-ability tiers, element synergy bonuses**, upgrade values, **enemy scaling**,
+layout anchors, the enemy spline). Want a tougher campaign or a different fortress layout? Edit the
+data, not the systems.
+
+### Difficulty
+
+The campaign is tuned to be challenging with two viable power paths (verified by the test harness):
+base heroes stall in the early cities, leveling alone tops out mid-campaign, and the final cities
+require **either** level 10 + between-wave upgrades **or** leveling + element synergy + tier-3
+duplicate abilities. Mixing both makes the endgame comfortable.
 
 ---
 
@@ -129,15 +191,18 @@ npm run shots     # renders in Chromium -> ./screenshots, reports console errors
 
 | Requirement | Implementation |
 |---|---|
-| Forest -> field -> winding path -> wall/2 bastions/gate -> bridge layout | `battle/BattleMap.js` |
-| Enemies spawn at top forest, follow one winding path | `battle/Spline.js`, `Enemy.js` |
-| Exactly 3 hero positions; bridge=Fighter, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
+| Forest -> field -> 3 winding lanes -> wall/2 bastions/3 gates -> bridges | `battle/BattleMap.js`, `config.lanes` |
+| Enemies spawn at top forest, follow 3 lane splines | `battle/Spline.js`, `Enemy.js`, `BattleManager.pickLane` |
+| 3 hero positions; Fighter holds centre lane, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
+| 3 lanes + roguelite affix waves + per-hero active skills | `BattleManager`, `config.AFFIXES/ACTIVE_SKILLS`, `ui/UI.js` |
 | Each hero spawns 2 matching support units | `battle/Hero.spawnSupportUnits` |
 | Enemies blocked at the bridge by the Fighter group | `BattleManager._updateBlocking`, `Enemy.update` |
 | Turret fires automatically | `battle/Turret.js` |
 | Gold + Regular Crystal each wave; Epic Crystal each city | `core/GameInstance.rewardWave / completeCity` |
 | Upgrade Heroes / Wall / Turret between waves | `BattleManager.buyUpgrade`, `ui/UI._showUpgradePanel` |
 | Epic pity -> guaranteed Legendary after 5 | `core/SummonManager._rollRarity` |
+| Duplicate copies unlock 3 ability tiers (3rd strongest) | `core/HeroCollection.abilityMods`, `config.ABILITIES` |
+| Element team synergy (e.g. 3× Ice) | `core/Synergy.js`, `BattleManager._deployTeam` |
 
 ---
 
@@ -149,6 +214,12 @@ the perspective battle scene, DOM for menus, `localStorage` for the save game), 
 same systems, data tables, and naming so the design intent is preserved.
 
 The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
-sets the art direction — misty forest spawn, winding field path, chunky stone wall with two round
-bastions and a central gate, and a cobblestone bridge to the city. Heroes, support units, enemies,
-projectiles and VFX are drawn procedurally on top, with depth-scaled sizing for a 2.5D feel.
+sets the art direction — misty forest spawn, three winding lanes, a long stone wall with three gates
+and two round bastions, and bridges to the city. The 14 heroes and 10 enemy types
+are **painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
+depth-scaled, facing-flipped billboards. Each gets **simple 2-3 frame animation** (`Anim.js`) —
+a stepped idle breathe, a walk waddle (moving enemies) and a 3-frame wind-up → strike/cast →
+recover attack — synthesized procedurally from the single painted frame (squash/stretch + lean +
+lunge), so there's no inter-frame jitter and no extra art needed. Support units reuse their hero's
+sprite. Projectiles, VFX and the procedural sprite painters remain an automatic fallback if an
+image is missing, so the game still runs with no assets.

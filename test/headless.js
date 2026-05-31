@@ -135,9 +135,11 @@ const FILES = [
   "js/core/SaveGame.js",
   "js/core/HeroCollection.js",
   "js/core/SummonManager.js",
+  "js/core/Synergy.js",
   "js/core/GameInstance.js",
   "js/battle/Spline.js",
   "js/battle/Render.js",
+  "js/battle/Anim.js",
   "js/battle/Effects.js",
   "js/battle/Projectile.js",
   "js/battle/Combatant.js",
@@ -211,15 +213,142 @@ assert(pityHits > 0, "pity actually triggered at least once");
 console.log("  gacha ok — regular[R:" + rareCt + " E:" + epicCt + " L:" + legCt + "]  epic maxGap=" + maxGap + " pityHits=" + pityHits);
 
 /* ===================================================================== *
+ *  Duplicate abilities + element synergy
+ * ===================================================================== */
+console.log("— abilities & synergy —");
+LW.SaveGame.clear(); // fresh save (earlier gacha rolls persisted to the mock store)
+const g2 = new LW.GameInstance();
+const fid = "fighter_brick";
+assert(g2.heroes.unlockedTiers(fid) === 0, "no abilities at 0 copies");
+assert(!g2.heroes.isAttuned(fid), "not attuned at 0 copies");
+
+// Copy thresholds 1 / 2 / 4 unlock tiers I / II / III.
+g2.state.heroes[fid].copies = 1;
+assert(g2.heroes.unlockedTiers(fid) === 1 && g2.heroes.isAttuned(fid), "tier I (Attunement) at 1 copy");
+g2.state.heroes[fid].copies = 2;
+assert(g2.heroes.unlockedTiers(fid) === 2, "tier II at 2 copies");
+g2.state.heroes[fid].copies = 3;
+assert(g2.heroes.unlockedTiers(fid) === 2, "still tier II at 3 copies");
+g2.state.heroes[fid].copies = 4;
+assert(g2.heroes.unlockedTiers(fid) === 3, "tier III at 4 copies");
+
+const fmods = g2.heroes.abilityMods(fid);
+assert(fmods.reflect > 0, "fighter tier II grants reflect");
+assert(fmods.surviveOnce === true, "fighter tier III grants survive-once (most powerful)");
+assert(fmods.hpMult > 1 && fmods.atkMult > 1, "fighter abilities raise stats");
+
+// addHero on a duplicate increments copies and reports the unlock.
+const beforeCopies = g2.heroes.copies("archer_robin");
+const dup = g2.heroes.addHero("archer_robin");
+assert(!dup.isNew && dup.copies === beforeCopies + 1, "duplicate increments copy count");
+assert(dup.unlockedTier === 1, "first duplicate unlocks an ability tier");
+
+g2.state.heroes["archer_robin"].copies = 4;
+const amods = g2.heroes.abilityMods("archer_robin");
+assert(amods.extraProjectiles >= 1, "archer tier II adds a projectile");
+assert(amods.ult && amods.ult.type === "volley", "archer tier III is the Rain of Arrows ultimate");
+g2.state.heroes["mage_ember"].copies = 2;
+assert(g2.heroes.abilityMods("mage_ember").slowOnHit, "mage tier II slows on hit");
+
+// Synergy from team elements.
+const Syn = LW.Synergy;
+const ice3 = Syn.compute([{ element: "Ice", attuned: false }, { element: "Ice", attuned: false }, { element: "Ice", attuned: false }]);
+assert(ice3.tier === "major" && ice3.element === "Ice", "3 Ice heroes -> major Ice synergy");
+assert(ice3.slowOnHit && ice3.atkMult > 1 && ice3.hpMult > 1, "Ice synergy: slow + team buff");
+const fire3 = Syn.compute([{ element: "Fire", attuned: false }, { element: "Fire", attuned: false }, { element: "Fire", attuned: false }]);
+assert(fire3.burnOnHit, "Fire synergy burns enemies");
+const two = Syn.compute([{ element: "Nature", attuned: false }, { element: "Nature", attuned: false }, { element: "Fire", attuned: false }]);
+assert(two.tier === "minor", "2 shared element -> minor synergy");
+const none = Syn.compute([{ element: "Ice", attuned: false }, { element: "Fire", attuned: false }, { element: "Storm", attuned: false }]);
+assert(none.tier === "none", "all different -> no synergy");
+const attuned3 = Syn.compute([{ element: "Fire", attuned: true }, { element: "Fire", attuned: true }, { element: "Fire", attuned: true }]);
+assert(attuned3.atkMult > fire3.atkMult, "Attunement (Tier I) increases synergy potency");
+console.log("  abilities + synergy ok");
+
+/* ===================================================================== *
+ *  Combat 2.0 — affinities, status combos, archetypes
+ * ===================================================================== */
+console.log("— combat 2.0 —");
+LW.SaveGame.clear();
+const cg = new LW.GameInstance();
+const cb = new LW.BattleManager(cg, 3);
+cb.start();
+const mk = (id) => new LW.Enemy(cb, LW.EnemyData.byId(id), 1);
+
+// Elemental weakness / resistance.
+let e = mk("slime"); let h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "magic", element: "Fire" }); // slime weak Fire
+assert(Math.abs(h - e.hp - 150) <= 2, "weakness ~x1.5 (" + (h - e.hp) + ")");
+e = mk("slime"); h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "physical", element: "Nature" }); // slime resists Nature
+assert(Math.abs(h - e.hp - 60) <= 2, "resistance ~x0.6 (" + (h - e.hp) + ")");
+
+// Armor vs damage type.
+e = mk("knight"); h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "physical", element: "Neutral" });
+assert(h - e.hp < 45, "armored knight shrugs physical (" + (h - e.hp) + ")");
+e = mk("knight"); h = e.hp;
+cb.damageEnemy(e, 100, null, { type: "magic", element: "Neutral" });
+assert(h - e.hp > 140, "armored knight weak to magic (" + (h - e.hp) + ")");
+
+// Status combos.
+e = mk("goblin");
+e.applyStatus("wet", 10);
+e.applyStatus("chill", 10);
+assert(e.isFrozen(), "wet + chill => frozen");
+cb.damageEnemy(e, 40, null, { type: "physical", element: "Neutral" });
+assert(!e.isFrozen(), "physical hit shatters frozen");
+e = mk("goblin");
+e.applyStatus("wet", 10);
+e.applyStatus("burn", 100);
+assert(e.burnT === 0, "wet douses fire");
+e = mk("harpy"); // element Storm -> immune to its own status (shock)
+e.applyStatus("shock", 50);
+assert(e.shockT === 0, "enemy immune to its own element status");
+
+// Flying bypasses the Fighter; only ranged can hit it.
+const fly = mk("harpy");
+assert(fly.flying && !fly.blockable, "harpy flies and is unblockable");
+cb.enemies.length = 0;
+cb.enemies.push(fly);
+fly.splineDistance = cb.blockDistance;
+fly._syncPos();
+assert(cb.bestTargetInRange(fly.x, fly.y, 220, { melee: true }) !== fly, "melee cannot target a flyer");
+assert(cb.bestTargetInRange(fly.x, fly.y, 220, {}) === fly, "ranged can target a flyer");
+
+// Splitter spawns slimelets on death.
+cb.enemies.length = 0;
+const sp = mk("slime");
+cb.enemies.push(sp);
+sp.die();
+assert(cb.enemies.some((x) => x.enemyId === "slimelet"), "slime splits into slimelets");
+
+// Shield absorbs before HP.
+e = mk("shieldbearer");
+assert(e.shieldHP > 0, "shieldbearer has a shield");
+const sh0 = e.shieldHP;
+cb.damageEnemy(e, 30, null, { type: "physical", element: "Neutral" });
+assert(e.shieldHP < sh0 && e.hp === e.maxHP, "physical chips shield, not HP");
+console.log("  combat 2.0 ok");
+
+/* ===================================================================== *
  *  TIER 2 — Full battle simulation
  * ===================================================================== */
 console.log("— battle simulation —");
 
 function simulateCity(cityIndex, opts) {
   opts = opts || {};
+  LW.SaveGame.clear(); // always simulate from a clean save
   const g = new LW.GameInstance();
   g.state.gold = opts.gold != null ? opts.gold : 100000;
-  if (opts.heroLevel) for (const id of g.heroes.ownedIds()) g.state.heroes[id].level = opts.heroLevel;
+  if (opts.team) {
+    for (const id of Object.values(opts.team)) if (!g.state.heroes[id]) g.state.heroes[id] = { level: 1, copies: 0 };
+    g.state.team = Object.assign({}, opts.team);
+  }
+  for (const id of g.heroes.ownedIds()) {
+    if (opts.heroLevel) g.state.heroes[id].level = opts.heroLevel;
+    if (opts.copies != null) g.state.heroes[id].copies = opts.copies;
+  }
   const battle = new LW.BattleManager(g, cityIndex);
   battle.start();
   let buys = 0;
@@ -229,9 +358,26 @@ function simulateCity(cityIndex, opts) {
   const maxSteps = opts.maxSteps || 60 * 60 * 8; // up to 8 min of sim
   while (safety++ < maxSteps) {
     battle.update(dt);
+    // Drive per-hero active skills (a player would fire them on cooldown).
+    if (battle.phase === "fighting") {
+      for (const pos of ["bridge", "left", "right"]) {
+        const hh = battle.heroByPos(pos);
+        if (hh && hh.skillReady) {
+          const p = hh.skillParams();
+          if (p.aim === "self") battle.castHeroSkill(pos, hh.x, hh.y);
+          else {
+            const tgt = battle.bestTargetInRange(hh.x, hh.y, p.range, {});
+            if (tgt) battle.castHeroSkill(pos, tgt.x, tgt.y);
+          }
+        }
+      }
+    }
     if (battle.phase === "upgrade") {
-      for (const type of ["hero", "wall", "turret"]) {
-        if (opts.buy !== false && battle.canAfford(type)) { battle.buyUpgrade(type); buys++; }
+      // Spend all earned gold (realistic when gold starts low).
+      if (opts.buy !== false) {
+        for (const type of ["hero", "wall", "turret"]) {
+          while (battle.canAfford(type)) { battle.buyUpgrade(type); buys++; }
+        }
       }
       battle.continueToNextWave();
     }
@@ -278,6 +424,30 @@ assert(base.battle.cityHP >= 0, "city HP non-negative");
 const r0 = base;
 assert(r0.battle.blockDistance > r0.battle.gateDistance, "block point is past the gate");
 assert(r0.battle.spline.length > 100, "spline has length");
+
+/* ---- Difficulty curve: challenging, with multiple power paths -------- */
+console.log("— difficulty —");
+const iceTeam = { bridge: "fighter_ironhide", left: "archer_fletcher", right: "mage_frost" };
+
+// Base heroes cannot carry into the later cities (even with active skills).
+const baseMid = simulateCity(6, { gold: 0, buy: false });
+console.log("  city 7 — base heroes: " + baseMid.battle.phase + " w" + (baseMid.battle.waveIndex + 1));
+assert(baseMid.battle.phase === "defeat", "base heroes can't clear a later city (investment required)");
+
+// Leveling alone is not enough for the final city.
+const lvlOnly = simulateCity(9, { gold: 0, buy: false, heroLevel: 10 });
+console.log("  city 10 — lv10 only: " + lvlOnly.battle.phase + " w" + (lvlOnly.battle.waveIndex + 1));
+assert(lvlOnly.battle.phase === "defeat", "leveling alone cannot clear the final city");
+
+// Path A: leveling + upgrades bought from earned wave gold clears it.
+const realUpg = simulateCity(9, { gold: 0, buy: true, heroLevel: 10 });
+console.log("  city 10 — lv10 + earned upgrades: " + realUpg.battle.phase);
+assert(realUpg.battle.phase === "victory", "final city winnable with leveling + earned upgrades");
+
+// Path B: full investment (mono-element synergy + tier-3 abilities + upgrades).
+const synFull = simulateCity(9, { gold: 0, buy: true, heroLevel: 10, team: iceTeam, copies: 4 });
+console.log("  city 10 — full investment: " + synFull.battle.phase);
+assert(synFull.battle.phase === "victory", "final city winnable with full investment");
 
 /* ===================================================================== *
  *  TIER 3 — UI smoke render

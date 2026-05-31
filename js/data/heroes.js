@@ -1,8 +1,10 @@
 /* =========================================================================
  * Last Wall — heroes.js
  * The launch roster: 4 Fighters, 4 Archers, 4 Mages (12 total).
- * Each hero defines theme colours used both for the hero sprite and its
- * 2 matching support units. Stats come from class base * rarity multiplier.
+ * Each hero has an ELEMENT (Ice / Fire / Nature / Storm) used by the team
+ * synergy system — every element has exactly one Fighter, Archer and Mage so
+ * a full mono-element team is always buildable. Theme colours drive both the
+ * hero sprite and its 2 matching support units.
  * ========================================================================= */
 window.LW = window.LW || {};
 
@@ -17,6 +19,7 @@ LW.HeroData = {
       name: "Brick",
       class: "Fighter",
       rarity: "Rare",
+      element: "Nature",
       theme: { primary: "#c0473a", secondary: "#8c2f25", trim: "#ffd9a0" },
       skillArchetype: "Bulwark",
       blurb: "A stubborn town guard who simply refuses to move.",
@@ -26,16 +29,18 @@ LW.HeroData = {
       name: "Ironhide",
       class: "Fighter",
       rarity: "Rare",
-      theme: { primary: "#7a6f63", secondary: "#4f463d", trim: "#d8c9a8" },
+      element: "Ice",
+      theme: { primary: "#6f8190", secondary: "#46535f", trim: "#d8ecf5" },
       skillArchetype: "Bulwark",
-      blurb: "Veteran shieldbearer wrapped in dented plate.",
+      blurb: "Veteran shieldbearer wrapped in frost-rimed plate.",
     },
     {
       id: "fighter_warlord",
       name: "Warlord Gar",
       class: "Fighter",
       rarity: "Epic",
-      theme: { primary: "#b03a52", secondary: "#6e2233", trim: "#ffce6b" },
+      element: "Fire",
+      theme: { primary: "#b03a2e", secondary: "#6e2114", trim: "#ffce6b" },
       skillArchetype: "Cleave",
       blurb: "Hits hard enough to clear the whole choke point.",
     },
@@ -44,9 +49,10 @@ LW.HeroData = {
       name: "Titan Vael",
       class: "Fighter",
       rarity: "Legendary",
-      theme: { primary: "#caa23a", secondary: "#7a5f17", trim: "#fff0b0" },
+      element: "Storm",
+      theme: { primary: "#8a7fd0", secondary: "#4a3f86", trim: "#fff0b0" },
       skillArchetype: "Unbreakable",
-      blurb: "A living rampart said to have never fallen.",
+      blurb: "A living rampart wreathed in distant thunder.",
     },
 
     /* ---- Archers ---- */
@@ -55,6 +61,7 @@ LW.HeroData = {
       name: "Robin",
       class: "Archer",
       rarity: "Rare",
+      element: "Nature",
       theme: { primary: "#3f9e63", secondary: "#27613d", trim: "#e6ffcf" },
       skillArchetype: "PiercingShot",
       blurb: "Quick hands, quicker quiver. Never misses the field.",
@@ -64,16 +71,18 @@ LW.HeroData = {
       name: "Fletcher",
       class: "Archer",
       rarity: "Rare",
-      theme: { primary: "#5a8f4a", secondary: "#37582d", trim: "#f0ffd0" },
+      element: "Ice",
+      theme: { primary: "#4aa6c8", secondary: "#2a6a86", trim: "#d6f4ff" },
       skillArchetype: "PiercingShot",
-      blurb: "Fletches her own arrows between every wave.",
+      blurb: "Fletches frost-tipped arrows between every wave.",
     },
     {
       id: "archer_hawkeye",
       name: "Hawkeye",
       class: "Archer",
       rarity: "Epic",
-      theme: { primary: "#2f9c8b", secondary: "#1c5d54", trim: "#d6fff4" },
+      element: "Fire",
+      theme: { primary: "#cc6a3a", secondary: "#7d3a1c", trim: "#ffe0b0" },
       skillArchetype: "Volley",
       blurb: "Picks off the deadliest target the instant it appears.",
     },
@@ -82,9 +91,30 @@ LW.HeroData = {
       name: "Sylvan Queen",
       class: "Archer",
       rarity: "Legendary",
-      theme: { primary: "#46c07a", secondary: "#1f7a48", trim: "#eaffce" },
+      element: "Storm",
+      theme: { primary: "#6fb0c0", secondary: "#2f7a8a", trim: "#eaffff" },
       skillArchetype: "RainOfArrows",
-      blurb: "The forest itself answers her draw.",
+      blurb: "The storm itself answers her draw.",
+    },
+    {
+      id: "archer_selene",
+      name: "Selene",
+      class: "Archer",
+      rarity: "Legendary",
+      element: "Ice",
+      theme: { primary: "#3c5a6b", secondary: "#21343f", trim: "#e6c87a" },
+      skillArchetype: "RainOfArrows",
+      blurb: "An elven markswoman whose frost-fletched arrows never thaw.",
+    },
+    {
+      id: "archer_ravenna",
+      name: "Ravenna",
+      class: "Archer",
+      rarity: "Legendary",
+      element: "Storm",
+      theme: { primary: "#2f5a5a", secondary: "#1b3636", trim: "#d8b86a" },
+      skillArchetype: "RainOfArrows",
+      blurb: "A raven-haired huntress; her golden bow sings before the storm.",
     },
 
     /* ---- Mages ---- */
@@ -93,6 +123,7 @@ LW.HeroData = {
       name: "Ember",
       class: "Mage",
       rarity: "Rare",
+      element: "Fire",
       theme: { primary: "#e0703a", secondary: "#9c4218", trim: "#ffd98a" },
       skillArchetype: "Firebolt",
       blurb: "Tosses fireballs that scatter the goblin lines.",
@@ -102,6 +133,7 @@ LW.HeroData = {
       name: "Frost",
       class: "Mage",
       rarity: "Rare",
+      element: "Ice",
       theme: { primary: "#4aa6d6", secondary: "#2a6a96", trim: "#d6f4ff" },
       skillArchetype: "Frostbolt",
       blurb: "Chills the field and the enemy's nerve.",
@@ -111,6 +143,7 @@ LW.HeroData = {
       name: "Storm",
       class: "Mage",
       rarity: "Epic",
+      element: "Storm",
       theme: { primary: "#6f7ce0", secondary: "#3b4499", trim: "#dfe4ff" },
       skillArchetype: "ChainLightning",
       blurb: "Calls lightning down on the densest crowd.",
@@ -120,9 +153,10 @@ LW.HeroData = {
       name: "Arcanist Lyra",
       class: "Mage",
       rarity: "Legendary",
-      theme: { primary: "#a96be0", secondary: "#5e2f99", trim: "#f0dcff" },
+      element: "Nature",
+      theme: { primary: "#6fc08a", secondary: "#2f8a54", trim: "#e6ffd8" },
       skillArchetype: "Meteor",
-      blurb: "Bends raw arcana into a falling star.",
+      blurb: "Bends living arcana into a blooming cataclysm.",
     },
   ],
 
@@ -132,5 +166,9 @@ LW.HeroData = {
 
   byClass(cls) {
     return this.list.filter((h) => h.class === cls);
+  },
+
+  byElement(el) {
+    return this.list.filter((h) => h.element === el);
   },
 };
