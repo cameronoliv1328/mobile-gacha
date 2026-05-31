@@ -96,6 +96,26 @@ LW.HeroData = {
       skillArchetype: "RainOfArrows",
       blurb: "The storm itself answers her draw.",
     },
+    {
+      id: "archer_selene",
+      name: "Selene",
+      class: "Archer",
+      rarity: "Legendary",
+      element: "Ice",
+      theme: { primary: "#3c5a6b", secondary: "#21343f", trim: "#e6c87a" },
+      skillArchetype: "RainOfArrows",
+      blurb: "An elven markswoman whose frost-fletched arrows never thaw.",
+    },
+    {
+      id: "archer_ravenna",
+      name: "Ravenna",
+      class: "Archer",
+      rarity: "Legendary",
+      element: "Storm",
+      theme: { primary: "#2f5a5a", secondary: "#1b3636", trim: "#d8b86a" },
+      skillArchetype: "RainOfArrows",
+      blurb: "A raven-haired huntress; her golden bow sings before the storm.",
+    },
 
     /* ---- Mages ---- */
     {
