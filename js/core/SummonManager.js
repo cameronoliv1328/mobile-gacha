@@ -52,9 +52,30 @@ LW.SummonManager = class SummonManager {
     return { rarity: LW.util.weightedPick(cfg.table).key, forced: false };
   }
 
+  // Heroes of a rarity that are still obtainable. Fully-collected Legendaries
+  // are retired (removed from the wish pool) so they never appear again.
+  availableOfRarity(rarity) {
+    return LW.HeroData.list.filter((h) => h.rarity === rarity && !this.game.heroes.isRetired(h.id));
+  }
+
+  // How many Legendaries remain in the pool (none => the banner can no longer
+  // award a Legendary; rolls that hit it drop a rarity instead).
+  legendariesRemaining() {
+    return this.availableOfRarity("Legendary").length;
+  }
+
   _heroOfRarity(rarity) {
-    const candidates = LW.HeroData.list.filter((h) => h.rarity === rarity);
-    return LW.util.pick(candidates);
+    // Walk down from the rolled rarity. If every hero of that rarity has been
+    // retired (e.g. all Legendaries fully collected), award the next rarity
+    // down rather than ever handing out a duplicate of a retired hero.
+    const order = ["Legendary", "Epic", "Rare"];
+    let start = order.indexOf(rarity);
+    if (start < 0) start = order.length - 1;
+    for (let i = start; i < order.length; i++) {
+      const avail = this.availableOfRarity(order[i]);
+      if (avail.length) return LW.util.pick(avail);
+    }
+    return LW.util.pick(LW.HeroData.list); // pathological: nothing left
   }
 
   /* Perform one roll. Returns a result object or null if unaffordable. */
@@ -62,15 +83,21 @@ LW.SummonManager = class SummonManager {
     if (!this.canRoll(banner)) return null;
     this._spend(banner);
 
-    const { rarity, forced } = this._rollRarity(banner);
+    const rolled = this._rollRarity(banner);
 
-    // Maintain Epic-banner pity counter.
+    // Maintain Epic-banner pity counter (tracks the ROLLED rarity, regardless
+    // of whether a Legendary was actually available to award).
     if (banner === "epic") {
-      if (rarity === "Legendary") this.state.epicPity = 0;
+      if (rolled.rarity === "Legendary") this.state.epicPity = 0;
       else this.state.epicPity += 1;
     }
 
-    const def = this._heroOfRarity(rarity);
+    // Resolve to a concrete hero; the rarity may be downgraded if the rolled
+    // rarity's pool is exhausted (all retired).
+    const def = this._heroOfRarity(rolled.rarity);
+    const rarity = def.rarity;
+    const downgraded = rarity !== rolled.rarity;
+
     const add = this.game.heroes.addHero(def.id); // persists + emits
     this.state.stats.summons = (this.state.stats.summons || 0) + 1;
     this.game.persist();
@@ -81,7 +108,8 @@ LW.SummonManager = class SummonManager {
       heroId: def.id,
       def,
       rarity,
-      forced,
+      forced: rolled.forced && !downgraded,
+      downgraded,
       isNew: add.isNew,
       dupeGold: add.dupeGold,
       copies: add.copies,

@@ -91,6 +91,12 @@ LW.Config = {
    * "Attunement", which empowers the hero's element synergy contribution. */
   ABILITY_UNLOCKS: [1, 2, 4], // copies required for tiers I, II, III
 
+  /* A hero is "fully collected" once its copy count reaches the final
+   * ABILITY_UNLOCKS threshold (every duplicate ability unlocked). Heroes of a
+   * rarity listed here are then RETIRED from the summon pool, so no duplicate
+   * of them can ever be pulled again. Legendaries are unique this way. */
+  RETIRE_WHEN_MAXED: ["Legendary"],
+
   ABILITIES: {
     Fighter: [
       { name: "Attunement", desc: "+12% HP. Empowers element synergy.", mods: { hpMult: 1.12, attune: true } },
@@ -234,7 +240,7 @@ LW.Config = {
 
   /* ---- Battle pacing --------------------------------------------------- */
   spawnInterval: 0.85, // seconds between enemies inside a wave (scaled down later)
-  speedOptions: [1, 2],
+  speedOptions: [1, 2, 4, 8],
 
   /* ---- Layout anchors (logical coordinates) ---------------------------
    * Fitted to the 3-lane painted battlefield (assets/battlefield.jpg). Ranged

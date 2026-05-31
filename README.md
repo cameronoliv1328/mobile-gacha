@@ -118,13 +118,13 @@ Files map directly onto the blueprints from the build file:
 ```
 index.html              # loads all modules in order; portrait stage
 assets/battlefield.jpg  # hand-painted battlefield illustration (drawn each battle)
-assets/sprites/         # 24 painted, transparent character/enemy sprites
+assets/sprites/         # 25 painted, transparent character/enemy sprites
 css/style.css           # stylized-fantasy mobile theme
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
   data/
     config.js           # ALL balance constants, layout anchors, spline points
-    heroes.js           # 14 heroes (4 Fighter / 6 Archer / 4 Mage)
+    heroes.js           # 15 heroes (4 Fighter / 7 Archer / 4 Mage)
     enemies.js          # 10 enemy archetypes (Slime…Ogre, Harpy, Knight…)
     levels.js           # procedural 10x10 wave generator
   core/
@@ -215,7 +215,7 @@ same systems, data tables, and naming so the design intent is preserved.
 
 The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
 sets the art direction — misty forest spawn, three winding lanes, a long stone wall with three gates
-and two round bastions, and bridges to the city. The 14 heroes and 10 enemy types
+and two round bastions, and bridges to the city. The 15 heroes and 10 enemy types
 are **painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
 depth-scaled, facing-flipped billboards. Each gets **simple 2-3 frame animation** (`Anim.js`) —
 a stepped idle breathe, a walk waddle (moving enemies) and a 3-frame wind-up → strike/cast →
