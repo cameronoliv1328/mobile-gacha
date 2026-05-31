@@ -234,7 +234,7 @@ LW.Config = {
 
   /* ---- Battle pacing --------------------------------------------------- */
   spawnInterval: 0.85, // seconds between enemies inside a wave (scaled down later)
-  speedOptions: [1, 2],
+  speedOptions: [1, 2, 4, 8],
 
   /* ---- Layout anchors (logical coordinates) ---------------------------
    * Fitted to the 3-lane painted battlefield (assets/battlefield.jpg). Ranged

@@ -351,6 +351,7 @@ function simulateCity(cityIndex, opts) {
   }
   const battle = new LW.BattleManager(g, cityIndex);
   battle.start();
+  if (opts.speed) battle.setSpeed(opts.speed);
   let buys = 0;
   const dt = 1 / 60;
   let safety = 0;
@@ -388,6 +389,10 @@ function simulateCity(cityIndex, opts) {
 }
 
 // City 0 is winnable even with NO upgrades; enemies reach and are blocked at the bridge.
+// 8x speed substeps must produce the same outcome as 1x (no tunnelling).
+const fast = simulateCity(0, { gold: 0, buy: false, speed: 8 });
+assert(fast.battle.phase === "victory", "8x speed still clears city 0 (substep-stable)");
+
 const base = simulateCity(0, { gold: 0, buy: false });
 console.log("  city 0 (no upgrades): phase=" + base.battle.phase + " wave=" + (base.battle.waveIndex + 1) + " kills=" + base.battle.killCount + " blocked=" + base.sawBlocked);
 assert(base.battle.killCount > 0, "enemies were killed");

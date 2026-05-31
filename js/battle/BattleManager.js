@@ -561,7 +561,19 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   }
 
   update(dtRaw) {
-    const dt = Math.min(0.05, dtRaw) * this.speed;
+    // Substep at a fixed timestep so high speeds (up to 8x) stay stable —
+    // no projectile tunnelling or choke overshoot.
+    let total = Math.min(0.1, dtRaw) * this.speed;
+    const STEP = 1 / 60;
+    while (total > 1e-4) {
+      const dt = Math.min(STEP, total);
+      this._step(dt);
+      total -= dt;
+      if (this.phase === "victory" || this.phase === "defeat") break;
+    }
+  }
+
+  _step(dt) {
     this.t += dt;
     this.map.update(dt);
 

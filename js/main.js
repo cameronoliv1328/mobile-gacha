@@ -121,7 +121,9 @@ LW.App = class App {
   }
 
   toggleSpeed() {
-    this.speed = this.speed === 1 ? 2 : 1;
+    const opts = LW.Config.speedOptions;
+    const i = opts.indexOf(this.speed);
+    this.speed = opts[(i + 1) % opts.length];
     if (this.battle) this.battle.setSpeed(this.speed);
   }
 

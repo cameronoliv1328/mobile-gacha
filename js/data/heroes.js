@@ -116,6 +116,16 @@ LW.HeroData = {
       skillArchetype: "RainOfArrows",
       blurb: "A raven-haired huntress; her golden bow sings before the storm.",
     },
+    {
+      id: "archer_brynhild",
+      name: "Brynhild",
+      class: "Archer",
+      rarity: "Legendary",
+      element: "Storm",
+      theme: { primary: "#3a6b7a", secondary: "#234a56", trim: "#e6c87a" },
+      skillArchetype: "RainOfArrows",
+      blurb: "A golden valkyrie whose winged arrows fall like judgment.",
+    },
 
     /* ---- Mages ---- */
     {

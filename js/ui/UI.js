@@ -626,7 +626,7 @@ LW.UI = class UI {
     const cityHpFill = this.el("div", { class: "cityhp-fill" });
     const cityHpText = this.el("span", { class: "cityhp-text" });
     const gold = this.el("span", { class: "chip-val", text: "0" });
-    const speedBtn = this.el("button", { class: "btn-icon", text: "»", onclick: () => this.app.toggleSpeed() });
+    const speedBtn = this.el("button", { class: "btn-icon", text: "1×", onclick: () => this.app.toggleSpeed() });
     const pauseBtn = this.el("button", { class: "btn-icon", text: "⏸", onclick: () => this.app.togglePause() });
 
     const top = this.el("div", { class: "hud-top" }, [
@@ -674,8 +674,8 @@ LW.UI = class UI {
     this.hudRefs.cityHpFill.style.width = Math.max(0, ratio * 100) + "%";
     this.hudRefs.cityHpFill.style.background = ratio > 0.5 ? "#6fcf5a" : ratio > 0.25 ? "#e6c84a" : "#e0594b";
     this.hudRefs.cityHpText.textContent = h.cityHP + " / " + h.cityMaxHP;
-    this.hudRefs.speedBtn.textContent = this.app.speed === 2 ? "»»" : "»";
-    this.hudRefs.speedBtn.classList.toggle("active", this.app.speed === 2);
+    this.hudRefs.speedBtn.textContent = this.app.speed + "×";
+    this.hudRefs.speedBtn.classList.toggle("active", this.app.speed > 1);
 
     // Synergy is constant for a battle — populate it once when available.
     if (!this.hudRefs.synShown && h.synergy && h.synergy.tier !== "none") {
