@@ -252,36 +252,38 @@ LW.Config = {
   ENEMY_SPEED_MULT: 1.2,
 
   /* ---- Layout anchors (logical coordinates, 960x540 landscape) ---------
-   * Ironcove Pass: enemies march from the Demonic Gate (top-left) along a
-   * winding road to the player's castle (bottom-right). Two ranged heroes hold
-   * the rune bastions flanking the road; the Fighter stands in the vanguard
-   * just in front of the castle and blocks the centre of the road. */
+   * Traced onto the painted Ironcove Pass map (assets/map_ironcove.png):
+   * enemies march from the Demonic Gate (top-left) along the road to the
+   * player's castle (bottom-right). The two ranged heroes hold the rune
+   * bastions flanking the road; the Fighter stands in the vanguard on the road
+   * just before the castle and blocks its centre. */
   anchors: {
-    Anchor_Bastion_Left_Hero: { x: 250, y: 372 },     // Hero Bastion 1 (lower-left)
-    Anchor_Bastion_Left_Unit_1: { x: 228, y: 384 },
-    Anchor_Bastion_Left_Unit_2: { x: 272, y: 384 },
-    Anchor_Bastion_Right_Hero: { x: 588, y: 232 },     // Hero Bastion 2 (upper-centre)
-    Anchor_Bastion_Right_Unit_1: { x: 566, y: 244 },
-    Anchor_Bastion_Right_Unit_2: { x: 610, y: 244 },
-    Anchor_Bridge_Hero: { x: 792, y: 426 },            // Vanguard, in front of the castle
-    Anchor_Bridge_Unit_1: { x: 772, y: 440 },
-    Anchor_Bridge_Unit_2: { x: 812, y: 440 },
-    Anchor_EnemySpawn_Top: { x: 58, y: 124 },          // Demonic Gate
-    Anchor_CityDamagePoint: { x: 892, y: 462 },        // Castle gate
-    Anchor_Turret_Main: { x: 858, y: 372 },            // Castle cannon
-    Anchor_CameraFocus: { x: 480, y: 300 },
+    Anchor_Bastion_Left_Hero: { x: 198, y: 300 },     // Hero Bastion 1 (lower-left platform)
+    Anchor_Bastion_Left_Unit_1: { x: 176, y: 312 },
+    Anchor_Bastion_Left_Unit_2: { x: 220, y: 312 },
+    Anchor_Bastion_Right_Hero: { x: 545, y: 86 },      // Hero Bastion 2 (upper-centre platform)
+    Anchor_Bastion_Right_Unit_1: { x: 523, y: 98 },
+    Anchor_Bastion_Right_Unit_2: { x: 567, y: 98 },
+    Anchor_Bridge_Hero: { x: 820, y: 350 },            // Vanguard on the road before the castle
+    Anchor_Bridge_Unit_1: { x: 800, y: 366 },
+    Anchor_Bridge_Unit_2: { x: 842, y: 338 },
+    Anchor_EnemySpawn_Top: { x: 120, y: 80 },          // Demonic Gate
+    Anchor_CityDamagePoint: { x: 868, y: 408 },        // Castle gate
+    Anchor_Turret_Main: { x: 880, y: 360 },            // Castle cannon
+    Anchor_CameraFocus: { x: 480, y: 280 },
   },
 
   /* One winding road, modelled as three closely-spaced trails so a few enemies
-   * slip along the edges. The Fighter blocks the CENTRE trail (blockLane) at
-   * the vanguard; the flanking trails have no melee blocker and must be cleared
-   * by the bastion heroes + castle cannon. The centre draws the most enemies
-   * (and every boss). */
+   * slip along the edges. The trails are traced onto the painted map's road and
+   * offset ±15px along the local normal. The Fighter blocks the CENTRE trail
+   * (blockLane) at the vanguard; the flanking trails have no melee blocker and
+   * must be cleared by the bastion heroes + castle cannon. The centre draws the
+   * most enemies (and every boss). */
   blockLane: 1,
   laneWeights: [0.22, 0.56, 0.22],
   lanes: [
-    { points: [{ x: 44, y: 116 }, { x: 136, y: 138 }, { x: 218, y: 210 }, { x: 268, y: 308 }, { x: 324, y: 380 }, { x: 418, y: 390 }, { x: 506, y: 340 }, { x: 568, y: 278 }, { x: 646, y: 256 }, { x: 710, y: 318 }, { x: 778, y: 390 }, { x: 846, y: 434 }, { x: 878, y: 448 }] },
-    { points: [{ x: 58, y: 128 }, { x: 150, y: 150 }, { x: 232, y: 222 }, { x: 282, y: 320 }, { x: 338, y: 392 }, { x: 432, y: 402 }, { x: 520, y: 352 }, { x: 582, y: 290 }, { x: 660, y: 268 }, { x: 724, y: 330 }, { x: 792, y: 402 }, { x: 860, y: 446 }, { x: 892, y: 460 }] },
-    { points: [{ x: 72, y: 140 }, { x: 164, y: 162 }, { x: 246, y: 234 }, { x: 296, y: 332 }, { x: 352, y: 404 }, { x: 446, y: 414 }, { x: 534, y: 364 }, { x: 596, y: 302 }, { x: 674, y: 280 }, { x: 738, y: 342 }, { x: 806, y: 414 }, { x: 874, y: 458 }, { x: 906, y: 472 }] },
+    { points: [{ x: 141, y: 80 }, { x: 215, y: 139 }, { x: 262, y: 200 }, { x: 262, y: 267 }, { x: 227, y: 297 }, { x: 262, y: 317 }, { x: 329, y: 290 }, { x: 372, y: 228 }, { x: 448, y: 210 }, { x: 516, y: 182 }, { x: 597, y: 163 }, { x: 674, y: 150 }, { x: 746, y: 185 }, { x: 779, y: 249 }, { x: 812, y: 304 }, { x: 848, y: 351 }, { x: 880, y: 400 }] },
+    { points: [{ x: 132, y: 92 }, { x: 205, y: 150 }, { x: 248, y: 205 }, { x: 248, y: 262 }, { x: 212, y: 300 }, { x: 262, y: 332 }, { x: 338, y: 302 }, { x: 380, y: 240 }, { x: 452, y: 224 }, { x: 520, y: 196 }, { x: 600, y: 178 }, { x: 672, y: 165 }, { x: 736, y: 196 }, { x: 766, y: 256 }, { x: 800, y: 312 }, { x: 836, y: 360 }, { x: 868, y: 408 }] },
+    { points: [{ x: 123, y: 104 }, { x: 195, y: 161 }, { x: 234, y: 210 }, { x: 234, y: 257 }, { x: 197, y: 303 }, { x: 262, y: 347 }, { x: 347, y: 314 }, { x: 388, y: 252 }, { x: 456, y: 238 }, { x: 524, y: 210 }, { x: 603, y: 193 }, { x: 670, y: 180 }, { x: 726, y: 207 }, { x: 753, y: 263 }, { x: 788, y: 320 }, { x: 824, y: 369 }, { x: 856, y: 416 }] },
   ],
 };
