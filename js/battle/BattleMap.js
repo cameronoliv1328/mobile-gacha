@@ -50,7 +50,23 @@ LW.BattleMap = class BattleMap {
 
   /* ---- Background (prerendered once, then blitted) -------------------- */
 
+  // A committed painted map (LW.Config.MAP_IMAGE), if it loaded successfully.
+  _mapImage() {
+    const im = LW.assets && LW.assets.mapImage;
+    return im && im.complete && im.naturalWidth ? im : null;
+  }
+
   renderBackground(ctx) {
+    const img = this._mapImage();
+    if (img) {
+      // Cover-fit the painting to the logical world (preserve aspect).
+      const s = Math.max(this.W / img.naturalWidth, this.H / img.naturalHeight);
+      const w = img.naturalWidth * s;
+      const h = img.naturalHeight * s;
+      ctx.drawImage(img, (this.W - w) / 2, (this.H - h) / 2, w, h);
+      return;
+    }
+    // No committed art: paint the scene procedurally (matches the spline).
     if (!this._bg) this._buildScene();
     if (this._bg) ctx.drawImage(this._bg, 0, 0, this.W, this.H);
     else this._paintGrass(ctx); // pathological fallback

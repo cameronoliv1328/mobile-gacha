@@ -8,6 +8,13 @@ window.LW = window.LW || {};
 LW.App = class App {
   constructor() {
     LW.assets = LW.assets || {};
+    // Optional painted battle map; BattleMap falls back to procedural art if
+    // the file is missing or fails to load.
+    if (LW.Config.MAP_IMAGE && !LW.assets.mapImage) {
+      const mi = new Image();
+      mi.src = LW.Config.MAP_IMAGE;
+      LW.assets.mapImage = mi;
+    }
 
     this.game = new LW.GameInstance();
     this.ui = new LW.UI(this, this.game);

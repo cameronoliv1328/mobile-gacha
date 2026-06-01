@@ -13,6 +13,11 @@ LW.Config = {
 
   SAVE_KEY: "lastwall.save.v1",
 
+  /* Optional painted battle map. If this image is present it's drawn as the
+   * battlefield background; otherwise BattleMap paints the scene procedurally.
+   * The art must match the road traced by `lanes` below (16:9 landscape). */
+  MAP_IMAGE: "assets/map_ironcove.png",
+
   /* ---- Campaign ------------------------------------------------------- */
   CITIES: 10,
   WAVES_PER_CITY: 10,
