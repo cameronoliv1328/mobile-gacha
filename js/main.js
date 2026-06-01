@@ -16,13 +16,15 @@ LW.App = class App {
       LW.assets.mapImage = mi;
     }
 
-    // Painted defensive-tower sprites (one per hero class), drawn under heroes.
+    // Painted defensive-tower frames (per hero class), drawn under heroes.
     LW.assets.towers = LW.assets.towers || {};
     for (const cls in LW.Config.TOWERS) {
       if (LW.assets.towers[cls]) continue;
-      const im = new Image();
-      im.src = LW.Config.TOWERS[cls].img;
-      LW.assets.towers[cls] = im;
+      LW.assets.towers[cls] = (LW.Config.TOWERS[cls].frames || []).map((src) => {
+        const im = new Image();
+        im.src = src;
+        return im;
+      });
     }
 
     this.game = new LW.GameInstance();

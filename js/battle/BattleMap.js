@@ -616,29 +616,85 @@ LW.BattleMap = class BattleMap {
     g.restore();
   }
 
+  // Advance each garrisoned tower's fire animation. A tower plays its fire
+  // sequence whenever its hero starts a new attack (detected by the hero's
+  // swingTimer rising). State is kept per hero on `_towerAnim`.
+  updateTowers(dt) {
+    if (!LW.Config.TOWERS) return;
+    for (const hero of this.battle.heroes) {
+      const t = LW.Config.TOWERS[hero.cls];
+      if (!t) continue;
+      let a = hero._towerAnim;
+      if (!a) { a = hero._towerAnim = { fireT: 0, lastSwing: 0 }; }
+      // New attack: the hero just (re)set its swing timer this frame.
+      if (hero.alive && hero.swingTimer > a.lastSwing + 1e-4 && a.fireT <= 0) {
+        a.fireT = t.fireTime || 0.3;
+      }
+      a.lastSwing = hero.swingTimer;
+      if (a.fireT > 0) a.fireT = Math.max(0, a.fireT - dt);
+    }
+  }
+
   // Painted defensive towers, one per deployed hero, drawn at the hero anchor
   // (behind the hero sprite). Archer/Mage garrison their bastion; the Fighter
-  // mans the guard post in the vanguard.
+  // mans the guard post in the vanguard. Plays a short fire animation (frame
+  // swap and/or a crystal glow) when the hero attacks.
   renderTowers(ctx) {
     const cfg = LW.Config.TOWERS;
-    const imgs = LW.assets && LW.assets.towers;
-    if (!cfg || !imgs) return;
+    const all = LW.assets && LW.assets.towers;
+    if (!cfg || !all) return;
     for (const hero of this.battle.heroes) {
       const t = cfg[hero.cls];
-      const img = imgs[hero.cls];
-      if (!t || !img || !img.complete || !img.naturalWidth) continue;
+      const frames = all[hero.cls];
+      if (!t || !frames || !frames.length) continue;
+
+      const a = hero._towerAnim || { fireT: 0 };
+      const firing = a.fireT > 0;
+      const prog = firing && t.fireTime ? 1 - a.fireT / t.fireTime : 0; // 0..1
+
+      // Pick the frame: step through fireSeq while firing, else the idle frame.
+      let idx = 0;
+      if (firing && t.fireSeq && t.fireSeq.length) {
+        idx = t.fireSeq[Math.min(t.fireSeq.length - 1, Math.floor(prog * t.fireSeq.length))];
+      }
+      const img = frames[Math.min(frames.length - 1, idx)];
+      if (!img || !img.complete || !img.naturalWidth) continue;
+
       const depth = this.depthScale(hero.y);
       const h = t.h * depth;
       const w = h * (img.naturalWidth / img.naturalHeight);
       const footY = hero.y + (t.dy || 0) * depth;
+      const topY = footY - h;
+
       ctx.save();
-      ctx.globalAlpha = 1;
       // Soft contact shadow under the tower.
       ctx.fillStyle = "rgba(0,0,0,0.20)";
       ctx.beginPath();
       ctx.ellipse(hero.x, footY - 2, w * 0.42, h * 0.10, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.drawImage(img, hero.x - w / 2, footY - h, w, h);
+
+      // Procedural charge glow (e.g. the mage's crystals) — pulses on fire.
+      if (t.glow) {
+        const base = 0.28 + 0.12 * Math.sin(this.t * 3 + hero.x); // gentle idle shimmer
+        const pulse = firing ? Math.sin(prog * Math.PI) : 0;       // swell then fade
+        const a2 = base * 0.5 + pulse * 0.9;
+        if (a2 > 0.02) {
+          const gx = hero.x - w / 2 + t.glow.x * w;
+          const gy = topY + t.glow.y * h;
+          const gr = t.glow.r * w * (1 + 0.25 * pulse);
+          const rg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+          rg.addColorStop(0, t.glow.color);
+          rg.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.globalAlpha = Math.min(0.85, a2);
+          ctx.globalCompositeOperation = "lighter";
+          ctx.fillStyle = rg;
+          ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = "source-over";
+        }
+      }
+
+      ctx.drawImage(img, hero.x - w / 2, topY, w, h);
       ctx.restore();
     }
   }

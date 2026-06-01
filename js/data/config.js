@@ -18,14 +18,30 @@ LW.Config = {
    * The art must match the road traced by `lanes` below (16:9 landscape). */
   MAP_IMAGE: "assets/map_ironcove.png",
 
-  /* Defensive towers a deployed hero garrisons, by class. Each is a painted
-   * transparent sprite (extracted from the asset sheets) drawn at the hero's
+  /* Defensive towers a deployed hero garrisons, by class. Each is built from
+   * painted frames extracted from the asset sheets and drawn at the hero's
    * anchor, behind the hero. `h` = logical draw height; `dy` nudges the tower's
-   * foot relative to the anchor so the hero stands at its base. */
+   * foot relative to the anchor so the hero stands at its base.
+   *   frames   : sprite list; frame 0 is the resting/idle pose.
+   *   fireSeq  : frame indices played once when the garrisoned hero attacks.
+   *   fireTime : seconds the fire sequence lasts.
+   *   glow     : optional procedural glow {color, x, y, r} (fraction of sprite)
+   *              that pulses bright while firing — used for the mage's crystals
+   *              whose flash frames don't isolate cleanly. */
   TOWERS: {
-    Archer: { img: "assets/towers/tower_archer.png", h: 126, dy: 8 },
-    Mage: { img: "assets/towers/tower_mage.png", h: 132, dy: 8 },
-    Fighter: { img: "assets/towers/tower_guard.png", h: 120, dy: 8 },
+    Archer: {
+      h: 126, dy: 8, fireTime: 0.36, fireSeq: [1, 2, 3, 0],
+      frames: ["assets/towers/tower_archer_0.png", "assets/towers/tower_archer_1.png", "assets/towers/tower_archer_2.png", "assets/towers/tower_archer_3.png"],
+    },
+    Mage: {
+      h: 132, dy: 8, fireTime: 0.5, fireSeq: [0],
+      frames: ["assets/towers/tower_mage_0.png"],
+      glow: { color: "#6fd3ff", x: 0.5, y: 0.86, r: 0.42 },
+    },
+    Fighter: {
+      h: 120, dy: 8, fireTime: 0.3, fireSeq: [1, 0],
+      frames: ["assets/towers/tower_guard_0.png", "assets/towers/tower_guard_1.png"],
+    },
   },
 
   /* ---- Campaign ------------------------------------------------------- */

@@ -602,6 +602,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
 
     // Friendly units idle harmlessly when there are no enemies.
     for (const h of this.heroes) h.update(dt);
+    this.map.updateTowers(dt); // garrisoned-tower fire animations (reads hero swings)
     for (const u of this.units) u.update(dt);
     this.turret.update(dt);
     for (const p of this.projectiles) p.update(dt);
