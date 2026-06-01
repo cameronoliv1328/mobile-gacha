@@ -11,6 +11,12 @@ LW.Config = {
   WORLD_W: 960,
   WORLD_H: 540,
 
+  /* Battle camera: the view is zoomed in and the player can pan/zoom around
+   * the map. zoom is a multiple of the fit-to-screen scale. */
+  CAM_DEFAULT_ZOOM: 1.75,
+  CAM_MIN_ZOOM: 1.0,
+  CAM_MAX_ZOOM: 2.8,
+
   SAVE_KEY: "lastwall.save.v1",
 
   /* Optional painted battle map. If this image is present it's drawn as the
@@ -34,7 +40,7 @@ LW.Config = {
       damage: 26, attackInterval: 0.75, range: 196, splash: 0,
       projSpeed: 470, projStyle: "arrow", damageType: "physical", element: "Neutral",
       color: "#caa15a",
-      h: 96, dy: 4, fireTime: 0.34, fireSeq: [1, 2, 3, 0],
+      h: 62, dy: 3, fireTime: 0.34, fireSeq: [1, 2, 3, 0],
       frames: ["assets/towers/tower_archer_0.png", "assets/towers/tower_archer_1.png", "assets/towers/tower_archer_2.png", "assets/towers/tower_archer_3.png"],
     },
     mage: {
@@ -42,7 +48,7 @@ LW.Config = {
       damage: 34, attackInterval: 1.25, range: 168, splash: 58,
       projSpeed: 360, projStyle: "magic", damageType: "magic", element: "Neutral",
       color: "#6fd3ff",
-      h: 100, dy: 4, fireTime: 0.5, fireSeq: [0],
+      h: 66, dy: 3, fireTime: 0.5, fireSeq: [0],
       frames: ["assets/towers/tower_mage_0.png"],
       glow: { color: "#6fd3ff", x: 0.5, y: 0.86, r: 0.42 },
     },
@@ -52,7 +58,7 @@ LW.Config = {
       spawnCount: 2, spawnInterval: 9, // infantry maintained + respawn cadence
       infantryHP: 150, infantryATK: 16, infantryInterval: 1.0,
       color: "#9fb0c4",
-      h: 94, dy: 4, fireTime: 0.3, fireSeq: [1, 0],
+      h: 60, dy: 3, fireTime: 0.3, fireSeq: [1, 0],
       frames: ["assets/towers/tower_guard_0.png", "assets/towers/tower_guard_1.png"],
     },
   },
@@ -304,10 +310,9 @@ LW.Config = {
   /* ---- Battle pacing --------------------------------------------------- */
   spawnInterval: 0.85, // seconds between enemies inside a wave (scaled down later)
   speedOptions: [1, 2, 4, 8],
-  // Global enemy march-speed multiplier. The Ironcove Pass road is longer than
-  // a straight lane, so enemies move a touch faster to keep the original pacing
-  // (time-to-reach and time-in-range) and the tuned difficulty curve intact.
-  ENEMY_SPEED_MULT: 1.2,
+  // Global enemy march-speed multiplier — tuned against the difficulty band so
+  // the road's time-to-reach / time-in-range keeps the campaign curve intact.
+  ENEMY_SPEED_MULT: 1.0,
 
   /* ---- Layout anchors (logical coordinates, 960x540 landscape) ---------
    * Traced onto the painted Ironcove Pass map (assets/map_ironcove.png):
@@ -320,10 +325,10 @@ LW.Config = {
     Anchor_Bastion_Left_Hero: { x: 196, y: 272 },      // Hero Bastion 1 (lower-left platform)
     Anchor_Bastion_Right_Hero: { x: 545, y: 106 },     // Hero Bastion 2 (upper-centre platform)
     Anchor_Bridge_Hero: { x: 820, y: 350 },            // Fighter hero, on the road before the castle
-    Anchor_EnemySpawn_Top: { x: 120, y: 80 },          // Demonic Gate
-    Anchor_CityDamagePoint: { x: 868, y: 408 },        // Castle gate
-    Anchor_Turret_Main: { x: 880, y: 360 },            // Castle cannon
-    Anchor_CameraFocus: { x: 480, y: 280 },
+    Anchor_EnemySpawn_Top: { x: 58, y: 132 },          // Demonic Gate (path start)
+    Anchor_CityDamagePoint: { x: 856, y: 400 },        // Castle gate (path end)
+    Anchor_Turret_Main: { x: 888, y: 372 },            // Castle cannon
+    Anchor_CameraFocus: { x: 470, y: 250 },
   },
 
   /* One winding road, modelled as three closely-spaced trails so a few enemies
@@ -335,8 +340,8 @@ LW.Config = {
   blockLane: 1,
   laneWeights: [0.22, 0.56, 0.22],
   lanes: [
-    { points: [{ x: 141, y: 80 }, { x: 215, y: 139 }, { x: 262, y: 200 }, { x: 262, y: 267 }, { x: 227, y: 297 }, { x: 262, y: 317 }, { x: 329, y: 290 }, { x: 372, y: 228 }, { x: 448, y: 210 }, { x: 516, y: 182 }, { x: 597, y: 163 }, { x: 674, y: 150 }, { x: 746, y: 185 }, { x: 779, y: 249 }, { x: 812, y: 304 }, { x: 848, y: 351 }, { x: 880, y: 400 }] },
-    { points: [{ x: 132, y: 92 }, { x: 205, y: 150 }, { x: 248, y: 205 }, { x: 248, y: 262 }, { x: 212, y: 300 }, { x: 262, y: 332 }, { x: 338, y: 302 }, { x: 380, y: 240 }, { x: 452, y: 224 }, { x: 520, y: 196 }, { x: 600, y: 178 }, { x: 672, y: 165 }, { x: 736, y: 196 }, { x: 766, y: 256 }, { x: 800, y: 312 }, { x: 836, y: 360 }, { x: 868, y: 408 }] },
-    { points: [{ x: 123, y: 104 }, { x: 195, y: 161 }, { x: 234, y: 210 }, { x: 234, y: 257 }, { x: 197, y: 303 }, { x: 262, y: 347 }, { x: 347, y: 314 }, { x: 388, y: 252 }, { x: 456, y: 238 }, { x: 524, y: 210 }, { x: 603, y: 193 }, { x: 670, y: 180 }, { x: 726, y: 207 }, { x: 753, y: 263 }, { x: 788, y: 320 }, { x: 824, y: 369 }, { x: 856, y: 416 }] },
+    { points: [{ x: 61, y: 118 }, { x: 144, y: 137 }, { x: 206, y: 160 }, { x: 247, y: 204 }, { x: 256, y: 233 }, { x: 289, y: 238 }, { x: 322, y: 214 }, { x: 378, y: 179 }, { x: 449, y: 152 }, { x: 527, y: 142 }, { x: 602, y: 144 }, { x: 654, y: 164 }, { x: 695, y: 205 }, { x: 725, y: 256 }, { x: 770, y: 304 }, { x: 821, y: 352 }, { x: 865, y: 389 }] },
+    { points: [{ x: 58, y: 132 }, { x: 140, y: 150 }, { x: 198, y: 172 }, { x: 236, y: 212 }, { x: 248, y: 244 }, { x: 292, y: 252 }, { x: 330, y: 226 }, { x: 384, y: 192 }, { x: 452, y: 166 }, { x: 528, y: 156 }, { x: 600, y: 158 }, { x: 646, y: 176 }, { x: 684, y: 214 }, { x: 714, y: 264 }, { x: 760, y: 314 }, { x: 812, y: 362 }, { x: 856, y: 400 }] },
+    { points: [{ x: 55, y: 146 }, { x: 136, y: 163 }, { x: 190, y: 184 }, { x: 225, y: 220 }, { x: 240, y: 255 }, { x: 295, y: 266 }, { x: 338, y: 238 }, { x: 390, y: 205 }, { x: 455, y: 180 }, { x: 529, y: 170 }, { x: 598, y: 172 }, { x: 638, y: 188 }, { x: 673, y: 223 }, { x: 703, y: 272 }, { x: 750, y: 324 }, { x: 803, y: 372 }, { x: 847, y: 411 }] },
   ],
 };

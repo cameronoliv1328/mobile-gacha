@@ -859,9 +859,13 @@ LW.UI = class UI {
 
   /* ---- Tower build / sell radial menu --------------------------------- */
 
-  // World (960x540) -> on-stage percentage, so the popup tracks the plot.
-  _worldToPct(x, y) {
-    return { left: (x / LW.Config.WORLD_W) * 100, top: (y / LW.Config.WORLD_H) * 100 };
+  // Keep the open tower menu pinned over its plot as the camera pans/zooms.
+  _positionTowerMenu() {
+    if (!this.towerMenu || !this.app.worldToScreen) return;
+    const p = this.towerMenu._world;
+    const s = this.app.worldToScreen(p.x, p.y);
+    this.towerMenu.style.left = s.x + "px";
+    this.towerMenu.style.top = s.y + "px";
   }
 
   openTowerMenu(plotIndex) {
@@ -870,11 +874,9 @@ LW.UI = class UI {
     this.battle.highlightPlot = plotIndex;
     const plot = LW.Config.PLOTS[plotIndex];
     const existing = this.battle.plotTowers[plotIndex];
-    const pos = this._worldToPct(plot.x, plot.y);
 
     const menu = this.el("div", { class: "tower-menu" });
-    menu.style.left = pos.left + "%";
-    menu.style.top = pos.top + "%";
+    menu._world = { x: plot.x, y: plot.y };
 
     if (existing) {
       // Occupied: show name + sell.
@@ -915,6 +917,7 @@ LW.UI = class UI {
     menu.appendChild(close);
     this.battleHud.appendChild(menu);
     this.towerMenu = menu;
+    this._positionTowerMenu();
   }
 
   closeTowerMenu() {
@@ -968,6 +971,7 @@ LW.UI = class UI {
 
   updateBattleHUD() {
     if (!this.hudRefs || !this.battle) return;
+    if (this.towerMenu) this._positionTowerMenu(); // track camera pan/zoom
     const h = this.battle.hud();
     this.hudRefs.wave.innerHTML =
       "Wave <b>" + h.wave + "</b> / " + h.totalWaves + (h.isBoss && h.phase === "fighting" ? ' <span class="boss-tag">BOSS</span>' : "");
