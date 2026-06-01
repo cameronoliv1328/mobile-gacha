@@ -18,7 +18,7 @@ LW.Turret = class Turret {
     this.projectiles = C.projectiles;
     this.splash = C.splash;
     this.cd = 0.4;
-    this.aimAngle = -Math.PI / 2; // point up the field by default
+    this.aimAngle = Math.PI; // point along the incoming road by default
     this.recoil = 0;
   }
 

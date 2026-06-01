@@ -1,13 +1,13 @@
 # Last Wall
 
-> Hold the bridge. Defend the city.
+> Hold the pass. Defend the castle.
 
-**Last Wall** is a stylized-fantasy, **portrait / iPhone-style city-defense gacha game**. Monsters
-emerge from a forest at the top of the screen, advance down **three lanes** through an open field,
-and funnel toward a fortified wall with three gates and two bastions. You deploy **3 heroes** —
-a **Fighter** holding the bridge choke point and two ranged **Archer/Mage** heroes on the
-bastions — each with **2 matching support units**. Survive 10 waves per city, upgrade between
-waves, earn summon crystals, and pull new heroes from the gacha.
+**Last Wall** is a stylized-fantasy, **landscape / iPhone-style tower-defense gacha game**. Monsters
+pour out of a **Demonic Gate** and march along a **winding road** ("Ironcove Pass") — across a river
+bridge — toward the **player's castle**. You deploy **3 heroes** — two ranged **Archer/Mage** heroes
+holding the **rune bastions** that flank the road, and a **Fighter** standing in the **vanguard** in
+front of the castle to block the choke — each with **2 matching support units**. Survive 10 waves per
+map, upgrade between waves, earn summon crystals, and pull new heroes from the gacha.
 
 This repository implements the [`Last Wall` design/build file](#design-source) as a **browser
 game** — a single-page, dependency-free app using **vanilla JavaScript + HTML5 Canvas**. The code
@@ -29,7 +29,7 @@ No build step and **no dependencies** — it runs straight from the file system.
   npm run serve          # serves on http://localhost:8000
   # or:  python3 -m http.server 8000
   ```
-  then open the URL on your phone/emulator in portrait.
+  then open the URL on your phone/emulator in landscape.
 
 Progress (currencies, heroes, levels, team, campaign) saves automatically to `localStorage`.
 
@@ -37,17 +37,17 @@ Progress (currencies, heroes, levels, team, campaign) saves automatically to `lo
 
 ## The game loop
 
-1. **Campaign** — 10 cities, each with 10 waves. Pick an unlocked city.
-2. **Battle** — enemies spawn from the forest and follow one winding spline path. Your bastion
-   heroes + turret rain fire on the field; the Fighter group blocks the bridge choke. If enemies
-   breach the bridge they damage **City HP** — lose all of it and the wall falls.
+1. **Campaign** — 10 maps, each with 10 waves. Pick an unlocked map.
+2. **Battle** — enemies emerge from the Demonic Gate and follow the winding road. Your bastion
+   heroes + castle cannon rain fire on the road; the Fighter's vanguard blocks the choke in front of
+   the castle. If enemies reach the castle they damage **City HP** — lose all of it and the castle falls.
 3. **Between waves** — spend gold to **Upgrade Heroes / Wall / Turret**, then continue.
-4. **Rewards** — every wave grants gold + **1 Regular Crystal**; clearing a city grants bonus gold +
-   **1 Epic Crystal** and unlocks the next city.
+4. **Rewards** — every wave grants gold + **1 Regular Crystal**; clearing a map grants bonus gold +
+   **1 Epic Crystal** and unlocks the next map.
 5. **Summon** — spend crystals on two banners; level up and re-team your roster.
 
 ### Classes & positions (exactly 3 hero slots)
-- **Bridge** — Fighters only (tanky melee blocker + small cleave).
+- **Vanguard** — Fighters only (tanky melee blocker + small cleave), placed in front of the castle.
 - **Left / Right Bastion** — Archers or Mages only (Archer = long-range single target; Mage =
   shorter range with splash).
 - Each hero auto-spawns **2 matching support units** (40% HP / 35% ATK of the parent). Units
@@ -101,10 +101,10 @@ Clearing a wave is a tactical read, not just an auto-battle:
   *Whirlwind* (self AoE + knockback to reset the choke), Archer *Arrow Storm* and Mage *Cataclysm*
   (aim a burst anywhere in range). The **tier-3 duplicate ability upgrades the skill**. Tap a skill
   button, then tap the field to cast.
-- **Three lanes.** Enemies advance down three lanes to three gates. The Fighter can only physically
-  block the **centre** lane; the two **side lanes** have no melee blocker and must be cleared by your
-  bastion ranged heroes + turret + skills (ranged auto-prioritise whoever is closest to breaching).
-  You can't hold everything — decide where to commit.
+- **The winding road.** Enemies follow the road as three closely-spaced trails. The Fighter's
+  vanguard can only physically block the **centre** trail; the two **flanking** trails have no melee
+  blocker and must be cleared by your bastion ranged heroes + castle cannon + skills (ranged
+  auto-prioritise whoever is closest to the castle). You can't hold everything — decide where to commit.
 - **Roguelite waves.** Between waves you get a **threat preview** of the next wave's enemies and a
   **push-your-luck** choice of wave modifier — Frenzied, Armored, Swarm, Misty (your range is cut),
   Regenerating, Blood Moon. Tougher affixes pay out more gold + crystals.
@@ -116,10 +116,10 @@ Clearing a wave is a tactical read, not just an auto-battle:
 Files map directly onto the blueprints from the build file:
 
 ```
-index.html              # loads all modules in order; portrait stage
-assets/battlefield.jpg  # hand-painted battlefield illustration (drawn each battle)
+index.html              # loads all modules in order; landscape (16:9) stage
 assets/sprites/         # 25 painted, transparent character/enemy sprites
-css/style.css           # stylized-fantasy mobile theme
+css/style.css           # stylized-fantasy mobile theme (landscape)
+js/battle/BattleMap.js  # procedurally paints the "Ironcove Pass" map each battle
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
   data/
@@ -135,12 +135,12 @@ js/
     Synergy.js          # element team-synergy calculator
   battle/
     Spline.js           # Spline_EnemyPath_Main - Catmull-Rom arc-length path
-    BattleMap.js        # BP_BattleMapController - anchors + painted battlefield bg
+    BattleMap.js        # BP_BattleMapController - anchors + procedural Ironcove Pass map
     BattleManager.js    # BP_BattleManager    - wave state machine, combat queries
     Combatant.js        # shared targeting/attack base
     Hero.js             # BP_HeroBase
     SupportUnit.js      # BP_SupportUnitBase
-    Enemy.js            # BP_EnemyBase        - spline movement + bridge blocking
+    Enemy.js            # BP_EnemyBase        - spline movement + vanguard blocking
     Turret.js           # BP_TurretBase
     CityWall.js         # BP_CityWall
     Anim.js             # procedural 2-3 frame idle/walk/attack sprite animation
@@ -175,9 +175,10 @@ then simulates full battles and smoke-renders every UI screen:
 npm test          # node test/headless.js
 ```
 
-It verifies the acceptance criteria, e.g.: enemies are blocked at the bridge, city 0 is winnable
-without upgrades, the upgrade path works, a late city is lost without investment but winnable with
-it, the regular banner never yields a Legendary, and the Epic pity gap never exceeds 5.
+It verifies the acceptance criteria, e.g.: enemies are blocked at the vanguard, map 1 is winnable
+without upgrades, the upgrade path works, a late map is lost without investment but winnable with
+it, the regular banner never yields a Legendary, the Epic pity gap never exceeds 5, and a fully
+collected Legendary is retired from the wish pool (no duplicate legends).
 
 Optional visual check (needs `npx playwright install chromium`):
 
@@ -191,12 +192,12 @@ npm run shots     # renders in Chromium -> ./screenshots, reports console errors
 
 | Requirement | Implementation |
 |---|---|
-| Forest -> field -> 3 winding lanes -> wall/2 bastions/3 gates -> bridges | `battle/BattleMap.js`, `config.lanes` |
-| Enemies spawn at top forest, follow 3 lane splines | `battle/Spline.js`, `Enemy.js`, `BattleManager.pickLane` |
-| 3 hero positions; Fighter holds centre lane, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
-| 3 lanes + roguelite affix waves + per-hero active skills | `BattleManager`, `config.AFFIXES/ACTIVE_SKILLS`, `ui/UI.js` |
+| Demonic Gate -> winding road -> river/bridge -> castle, 2 rune bastions | `battle/BattleMap.js`, `config.lanes` |
+| Enemies spawn at the Demonic Gate, follow 3 road trails | `battle/Spline.js`, `Enemy.js`, `BattleManager.pickLane` |
+| 3 hero positions; Fighter holds the vanguard, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
+| Landscape road + roguelite affix waves + per-hero active skills | `BattleManager`, `config.AFFIXES/ACTIVE_SKILLS`, `ui/UI.js` |
 | Each hero spawns 2 matching support units | `battle/Hero.spawnSupportUnits` |
-| Enemies blocked at the bridge by the Fighter group | `BattleManager._updateBlocking`, `Enemy.update` |
+| Enemies blocked at the vanguard by the Fighter group | `BattleManager._updateBlocking`, `Enemy.update` |
 | Turret fires automatically | `battle/Turret.js` |
 | Gold + Regular Crystal each wave; Epic Crystal each city | `core/GameInstance.rewardWave / completeCity` |
 | Upgrade Heroes / Wall / Turret between waves | `BattleManager.buyUpgrade`, `ui/UI._showUpgradePanel` |
@@ -213,9 +214,10 @@ Where the spec describes Unreal/UMG concepts, the equivalent web technology is u
 the perspective battle scene, DOM for menus, `localStorage` for the save game), while keeping the
 same systems, data tables, and naming so the design intent is preserved.
 
-The battlefield itself (`assets/battlefield.jpg`) is a hand-painted-style fantasy illustration that
-sets the art direction — misty forest spawn, three winding lanes, a long stone wall with three gates
-and two round bastions, and bridges to the city. The 15 heroes and 10 enemy types
+The battlefield — **"Ironcove Pass"** — is **painted procedurally** by `battle/BattleMap.js` to a
+cached offscreen canvas, so the art lines up exactly with the movement splines: a grassy landscape
+with a Demonic Gate spawn, a winding dirt road, a river crossed by a wooden bridge, two rune bastions
+flanking the road, and the player's castle. The 15 heroes and 10 enemy types
 are **painted billboard sprites** (`assets/sprites/`, transparent PNGs) drawn on top as foot-anchored,
 depth-scaled, facing-flipped billboards. Each gets **simple 2-3 frame animation** (`Anim.js`) —
 a stepped idle breathe, a walk waddle (moving enemies) and a 3-frame wind-up → strike/cast →

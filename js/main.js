@@ -7,13 +7,7 @@ window.LW = window.LW || {};
 
 LW.App = class App {
   constructor() {
-    // Preload the painted battlefield illustration used by every battle.
     LW.assets = LW.assets || {};
-    if (!LW.assets.battlefield) {
-      const bf = new Image();
-      bf.src = "assets/battlefield.jpg";
-      LW.assets.battlefield = bf;
-    }
 
     this.game = new LW.GameInstance();
     this.ui = new LW.UI(this, this.game);

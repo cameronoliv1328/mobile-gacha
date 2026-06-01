@@ -238,14 +238,14 @@ LW.UI = class UI {
 
     const title = this.el("div", { class: "title-block" }, [
       this.el("div", { class: "game-title", text: "LAST WALL" }),
-      this.el("div", { class: "game-sub", text: "Hold the bridge. Defend the city." }),
+      this.el("div", { class: "game-sub", text: "Hold the pass. Defend the castle." }),
     ]);
     wrap.appendChild(title);
 
     // Team showcase
     const team = this.game.heroes.getTeam();
     const showcase = this.el("div", { class: "team-showcase" });
-    for (const [slot, label] of [["left", "Bastion"], ["bridge", "Bridge"], ["right", "Bastion"]]) {
+    for (const [slot, label] of [["left", "Bastion"], ["bridge", "Vanguard"], ["right", "Bastion"]]) {
       const id = team[slot];
       const def = id && LW.HeroData.byId(id);
       const cell = this.el("div", { class: "showcase-cell" + (slot === "bridge" ? " featured" : "") });
@@ -337,7 +337,7 @@ LW.UI = class UI {
     const team = this.game.heroes.getTeam();
     const strip = this.el("div", { class: "team-strip" });
     const slots = [
-      ["bridge", "Bridge · Fighter"],
+      ["bridge", "Vanguard · Fighter"],
       ["left", "Left Bastion"],
       ["right", "Right Bastion"],
     ];
@@ -362,7 +362,7 @@ LW.UI = class UI {
 
   _launch(cityIndex) {
     if (!this.game.heroes.validateTeam()) {
-      this.toast("Set a Fighter on the bridge and 2 ranged heroes on the bastions");
+      this.toast("Set a Fighter in the vanguard and 2 ranged heroes on the bastions");
       this.go("roster");
       return;
     }
@@ -636,7 +636,7 @@ LW.UI = class UI {
 
     const deploy = this.el("div", { class: "deploy-row" });
     if (def.class === "Fighter") {
-      deploy.appendChild(this._heroScreenDeployBtn(id, "bridge", "Deploy to Bridge", team.bridge === id));
+      deploy.appendChild(this._heroScreenDeployBtn(id, "bridge", "Deploy to Vanguard", team.bridge === id));
     } else {
       deploy.appendChild(this._heroScreenDeployBtn(id, "left", "Left Bastion", team.left === id));
       deploy.appendChild(this._heroScreenDeployBtn(id, "right", "Right Bastion", team.right === id));
@@ -666,6 +666,12 @@ LW.UI = class UI {
     wrap.appendChild(this.header("Hero", () => this.go("roster")));
     wrap.appendChild(this.currencyBar());
 
+    // Two-column body: portrait stage on the left, hero info on the right
+    // (stacks vertically on a narrow viewport).
+    const body = this.el("div", { class: "hero-body" });
+    const left = this.el("div", { class: "hero-col-stage" });
+    const info = this.el("div", { class: "hero-col-info" });
+
     // --- Portrait stage with overlays ---
     const stage = this.el("div", { class: "hero-stage", style: "--elem:" + (E ? E.color : rar.color) });
 
@@ -693,7 +699,7 @@ LW.UI = class UI {
         this.el("span", { text: "Exclusive" }),
       ]));
     }
-    wrap.appendChild(stage);
+    left.appendChild(stage);
 
     // --- Identity: stars, name, rarity badge, level + details ---
     const idblock = this.el("div", { class: "hero-id" });
@@ -709,7 +715,7 @@ LW.UI = class UI {
         this.el("span", { class: "detail-i", text: "ⓘ" }), this.el("span", { text: " Details" }),
       ]),
     ]));
-    wrap.appendChild(idblock);
+    info.appendChild(idblock);
 
     // --- Stats panel (HP / ATK / RNG / SPD) ---
     const statRow = (icon, label, val) => this.el("div", { class: "hstat" }, [
@@ -717,7 +723,7 @@ LW.UI = class UI {
       this.el("span", { class: "hstat-label", text: label }),
       this.el("span", { class: "hstat-val", text: String(val) }),
     ]);
-    wrap.appendChild(this.el("div", { class: "hero-stat-panel" }, [
+    info.appendChild(this.el("div", { class: "hero-stat-panel" }, [
       statRow("❤️", "HP", stats.maxHP),
       statRow("⚔️", "ATK", stats.atk),
       statRow("🎯", "RNG", Math.round(stats.range)),
@@ -725,8 +731,12 @@ LW.UI = class UI {
     ]));
 
     // --- Skills + actions ---
-    wrap.appendChild(this._heroSkillRow(def, id));
-    if (owned) wrap.appendChild(this._heroActions(def, id, team));
+    info.appendChild(this._heroSkillRow(def, id));
+    if (owned) info.appendChild(this._heroActions(def, id, team));
+
+    body.appendChild(left);
+    body.appendChild(info);
+    wrap.appendChild(body);
 
     return wrap;
   }
@@ -804,7 +814,7 @@ LW.UI = class UI {
     // Deploy buttons
     const deploy = this.el("div", { class: "deploy-row" });
     if (def.class === "Fighter") {
-      deploy.appendChild(this._deployBtn(id, "bridge", "Deploy to Bridge", team.bridge === id));
+      deploy.appendChild(this._deployBtn(id, "bridge", "Deploy to Vanguard", team.bridge === id));
     } else {
       deploy.appendChild(this._deployBtn(id, "left", "Left Bastion", team.left === id));
       deploy.appendChild(this._deployBtn(id, "right", "Right Bastion", team.right === id));

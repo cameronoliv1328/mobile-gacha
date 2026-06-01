@@ -42,15 +42,16 @@ body {
 
 #app {
   position: relative;
-  width: min(100vw, 480px, 56.25vh);
-  aspect-ratio: 9 / 16;
+  width: min(100vw, 177.78vh);
+  aspect-ratio: 16 / 9;
+  max-width: 100vw;
   max-height: 100vh;
   overflow: hidden;
   background: #10141d;
-  border-radius: 18px;
+  border-radius: 16px;
   box-shadow: var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
-@media (max-width: 520px) {
+@media (max-height: 520px) {
   #app { border-radius: 0; box-shadow: none; }
 }
 
@@ -115,12 +116,16 @@ body {
 .screen {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
+  align-items: center;
   padding: 16px;
   gap: 14px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 .screen::-webkit-scrollbar { width: 0; }
+/* Landscape stage is wide; keep meta content in a centered, readable column. */
+.screen > * { width: 100%; max-width: 560px; }
+.roster-screen > * { max-width: 760px; }
 
 .screen-header { display: flex; align-items: center; gap: 10px; }
 .screen-title { margin: 0; font-size: 22px; font-family: Georgia, serif; letter-spacing: 0.5px; }
@@ -470,6 +475,11 @@ body {
 
 .hero-screen { gap: 12px; }
 
+/* Body: two columns on a wide (landscape) stage, stacked when narrow. */
+.hero-body { display: flex; flex-direction: column; gap: 12px; }
+.hero-col-stage { flex: 0 0 auto; min-width: 0; }
+.hero-col-info { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
 /* Portrait stage */
 .hero-screen .hero-stage {
   position: relative;
@@ -584,3 +594,13 @@ body {
 /* Actions */
 .hero-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; padding-bottom: 6px; }
 .hero-actions .btn-primary { width: 100%; }
+
+/* Landscape: portrait stage on the left, hero info on the right. Declared last
+ * so it overrides the portrait-stage defaults (e.g. the square aspect-ratio). */
+@media (min-aspect-ratio: 1 / 1) {
+  .hero-screen > * { max-width: 880px; }
+  .hero-body { flex-direction: row; align-items: stretch; }
+  .hero-col-stage { width: 308px; flex: 0 0 308px; }
+  .hero-col-info { flex: 1 1 auto; justify-content: flex-start; }
+  .hero-screen .hero-stage { aspect-ratio: auto; height: 100%; min-height: 300px; }
+}
