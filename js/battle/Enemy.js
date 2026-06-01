@@ -78,6 +78,7 @@ LW.Enemy = class Enemy {
     this.attackCD = Math.random() * this.attackInterval;
     this.target = null;
     this.holdDistance = this.blockDist;
+    this.blockLineDist = null; // lane-distance of the blocker line holding it
     this.t = Math.random() * 4;
     this.facing = -1;
     this.attackAnimT = 0;
@@ -216,10 +217,12 @@ LW.Enemy = class Enemy {
       return;
     }
 
-    // Moving.
+    // Moving. If this monster has been assigned to a blocker line ahead of it,
+    // it can't march past that line until the blocker there dies.
     let next = this.splineDistance + eff * dt;
-    if (this.blockable && this.laneBlocked && this.battle.hasLivingBlocker() && next > this.blockDist) {
-      next = this.blockDist;
+    const cap = this.blockLineDist != null ? this.blockLineDist : this.blockDist;
+    if (this.blockable && this.laneBlocked && this.battle.hasLivingBlocker() && this.state === "blocked" && next > cap) {
+      next = cap;
     }
     this.splineDistance = next;
     this._syncPos();

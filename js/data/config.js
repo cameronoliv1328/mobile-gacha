@@ -18,31 +18,63 @@ LW.Config = {
    * The art must match the road traced by `lanes` below (16:9 landscape). */
   MAP_IMAGE: "assets/map_ironcove.png",
 
-  /* Defensive towers a deployed hero garrisons, by class. Each is built from
-   * painted frames extracted from the asset sheets and drawn at the hero's
-   * anchor, behind the hero. `h` = logical draw height; `dy` nudges the tower's
-   * foot relative to the anchor so the hero stands at its base.
-   *   frames   : sprite list; frame 0 is the resting/idle pose.
-   *   fireSeq  : frame indices played once when the garrisoned hero attacks.
-   *   fireTime : seconds the fire sequence lasts.
-   *   glow     : optional procedural glow {color, x, y, r} (fraction of sprite)
-   *              that pulses bright while firing — used for the mage's crystals
-   *              whose flash frames don't isolate cleanly. */
-  TOWERS: {
-    Archer: {
-      h: 126, dy: 8, fireTime: 0.36, fireSeq: [1, 2, 3, 0],
+  /* ---- Buildable towers (Kingdom-Rush style) --------------------------
+   * Towers are built on the dirt-circle plots (PLOTS) during battle for gold.
+   *   Archer : fast single-target physical arrows (long range).
+   *   Mage   : slower splash magic (shorter range, hits clusters).
+   *   Guard  : no ranged attack — periodically spawns blocking infantry that
+   *            march to the path and body-block monsters (respawn when killed).
+   * Art: painted frames extracted from the asset sheets. `h` = logical draw
+   * height; `dy` nudges the tower foot relative to the plot centre; fireSeq /
+   * fireTime drive the firing animation; `glow` is an optional procedural
+   * charge glow (the mage's crystals). */
+  TOWER_TYPES: {
+    archer: {
+      name: "Archer Tower", cls: "Archer", cost: 70, icon: "🏹",
+      damage: 26, attackInterval: 0.75, range: 196, splash: 0,
+      projSpeed: 470, projStyle: "arrow", damageType: "physical", element: "Neutral",
+      color: "#caa15a",
+      h: 96, dy: 4, fireTime: 0.34, fireSeq: [1, 2, 3, 0],
       frames: ["assets/towers/tower_archer_0.png", "assets/towers/tower_archer_1.png", "assets/towers/tower_archer_2.png", "assets/towers/tower_archer_3.png"],
     },
-    Mage: {
-      h: 132, dy: 8, fireTime: 0.5, fireSeq: [0],
+    mage: {
+      name: "Mage Tower", cls: "Mage", cost: 90, icon: "✨",
+      damage: 34, attackInterval: 1.25, range: 168, splash: 58,
+      projSpeed: 360, projStyle: "magic", damageType: "magic", element: "Neutral",
+      color: "#6fd3ff",
+      h: 100, dy: 4, fireTime: 0.5, fireSeq: [0],
       frames: ["assets/towers/tower_mage_0.png"],
       glow: { color: "#6fd3ff", x: 0.5, y: 0.86, r: 0.42 },
     },
-    Fighter: {
-      h: 120, dy: 8, fireTime: 0.3, fireSeq: [1, 0],
+    guard: {
+      name: "Guard Post", cls: "Fighter", cost: 80, icon: "🛡",
+      range: 150, // leash: how far infantry roam to reach the path
+      spawnCount: 2, spawnInterval: 9, // infantry maintained + respawn cadence
+      infantryHP: 150, infantryATK: 16, infantryInterval: 1.0,
+      color: "#9fb0c4",
+      h: 94, dy: 4, fireTime: 0.3, fireSeq: [1, 0],
       frames: ["assets/towers/tower_guard_0.png", "assets/towers/tower_guard_1.png"],
     },
   },
+
+  /* Build/economy. Towers can be sold back for a fraction of spend. */
+  TOWER_SELL_FRACTION: 0.6,
+  PLOT_RADIUS: 18, // tap radius / drawn ring size for an empty plot
+
+  /* Dirt-circle build plots on the painted map (world coords). Towers may be
+   * built only here. Traced onto assets/map_ironcove.png. */
+  PLOTS: [
+    { x: 214, y: 150 },
+    { x: 306, y: 122 },
+    { x: 438, y: 120 },
+    { x: 360, y: 182 },
+    { x: 286, y: 208 },
+    { x: 480, y: 202 },
+    { x: 360, y: 250 },
+    { x: 292, y: 270 },
+    { x: 500, y: 300 },
+    { x: 622, y: 250 },
+  ],
 
   /* ---- Campaign ------------------------------------------------------- */
   CITIES: 10,
@@ -280,19 +312,14 @@ LW.Config = {
   /* ---- Layout anchors (logical coordinates, 960x540 landscape) ---------
    * Traced onto the painted Ironcove Pass map (assets/map_ironcove.png):
    * enemies march from the Demonic Gate (top-left) along the road to the
-   * player's castle (bottom-right). The two ranged heroes hold the rune
-   * bastions flanking the road; the Fighter stands in the vanguard on the road
-   * just before the castle and blocks its centre. */
+   * player's castle (bottom-right). The two ranged HEROES stand ALONE on the
+   * rune bastions flanking the road; the Fighter hero stands on the road just
+   * before the castle and blocks it. (Towers are built separately on PLOTS;
+   * heroes no longer have support units.) */
   anchors: {
-    Anchor_Bastion_Left_Hero: { x: 196, y: 352 },     // Hero Bastion 1 (lower-left platform)
-    Anchor_Bastion_Left_Unit_1: { x: 168, y: 366 },
-    Anchor_Bastion_Left_Unit_2: { x: 224, y: 366 },
-    Anchor_Bastion_Right_Hero: { x: 545, y: 124 },     // Hero Bastion 2 (upper-centre platform)
-    Anchor_Bastion_Right_Unit_1: { x: 519, y: 136 },
-    Anchor_Bastion_Right_Unit_2: { x: 571, y: 136 },
-    Anchor_Bridge_Hero: { x: 820, y: 350 },            // Vanguard on the road before the castle
-    Anchor_Bridge_Unit_1: { x: 800, y: 366 },
-    Anchor_Bridge_Unit_2: { x: 842, y: 338 },
+    Anchor_Bastion_Left_Hero: { x: 196, y: 272 },      // Hero Bastion 1 (lower-left platform)
+    Anchor_Bastion_Right_Hero: { x: 545, y: 106 },     // Hero Bastion 2 (upper-centre platform)
+    Anchor_Bridge_Hero: { x: 820, y: 350 },            // Fighter hero, on the road before the castle
     Anchor_EnemySpawn_Top: { x: 120, y: 80 },          // Demonic Gate
     Anchor_CityDamagePoint: { x: 868, y: 408 },        // Castle gate
     Anchor_Turret_Main: { x: 880, y: 360 },            // Castle cannon

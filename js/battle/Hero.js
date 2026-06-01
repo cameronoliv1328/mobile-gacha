@@ -20,9 +20,11 @@ LW.Hero = class Hero extends LW.Combatant {
       splash: o.baseStats.splash || (o.def.class === "Fighter" ? 26 : 0),
       blocks: o.def.class === "Fighter",
       isHero: true,
-      scale: 1.2,
+      // Ranged heroes stand alone on the rune bastions, so they're drawn
+      // smaller to sit neatly on the circle; the Fighter on the road is larger.
+      scale: o.def.class === "Fighter" ? 1.15 : 0.82,
       spriteId: o.def.id,
-      spriteH: 78,
+      spriteH: o.def.class === "Fighter" ? 78 : 54,
       damageType: LW.Config.COMBAT.classDamageType[o.def.class] || "physical",
       element: o.def.element || "Neutral",
       primary: theme.primary,
@@ -46,27 +48,9 @@ LW.Hero = class Hero extends LW.Combatant {
     this.supportUnits = [];
   }
 
-  spawnSupportUnits(anchors) {
-    const C = LW.Config;
-    for (let i = 0; i < C.SUPPORT_PER_HERO; i++) {
-      const a = anchors[i] || { x: this.x + (i ? 24 : -24), y: this.y + 18 };
-      const u = new LW.SupportUnit(this.battle, {
-        parent: this,
-        x: a.x,
-        y: a.y,
-        cls: this.cls,
-        maxHP: Math.max(1, Math.round(this.maxHP * C.SUPPORT_HP_PCT)),
-        atk: Math.max(1, Math.round(this.atk * C.SUPPORT_ATK_PCT)),
-        attackInterval: this.attackInterval,
-        range: this.range * 0.92,
-        splash: this.cls === "Mage" ? this.splash * 0.7 : 0,
-        blocks: this.blocks,
-        theme: this.def.theme,
-      });
-      this.supportUnits.push(u);
-      this.battle.units.push(u);
-    }
-  }
+  // Heroes now deploy alone (no support units). Kept as a no-op so older call
+  // sites and saves stay compatible.
+  spawnSupportUnits() {}
 
   // Recompute final stats from base * (in-battle buffs) * abilities * synergy,
   // preserving current HP fraction. Also configures effects + the squad.
@@ -96,15 +80,6 @@ LW.Hero = class Hero extends LW.Combatant {
     this.slowOnHit = am.slowOnHit || sm.slowOnHit || null;
     this.burnOnHit = sm.burnOnHit || null;
     this.skillTier3 = !!am.ult; // tier-3 duplicate ability upgrades the skill
-
-    for (const u of this.supportUnits) {
-      u.refresh(this.maxHP, this.atk);
-      u.attackInterval = this.attackInterval * (this.cls === "Archer" ? 0.95 : 1);
-      u.range = this.range * 0.92;
-      u.splash = this.cls === "Mage" ? this.splash * 0.7 : 0;
-      u.slowOnHit = this.slowOnHit;
-      u.burnOnHit = this.burnOnHit;
-    }
   }
 
   update(dt) {
@@ -181,13 +156,10 @@ LW.Hero = class Hero extends LW.Combatant {
 
   healFull() {
     this.hp = this.maxHP;
-    for (const u of this.supportUnits) if (u.alive) u.hp = u.maxHP;
   }
 
   die() {
     if (!this.alive) return;
     super.die();
-    // Support units despawn with their hero (per design rule).
-    for (const u of this.supportUnits) u.despawn();
   }
 };

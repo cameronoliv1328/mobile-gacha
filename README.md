@@ -4,10 +4,12 @@
 
 **Last Wall** is a stylized-fantasy, **landscape / iPhone-style tower-defense gacha game**. Monsters
 pour out of a **Demonic Gate** and march along a **winding road** ("Ironcove Pass") — across a river
-bridge — toward the **player's castle**. You deploy **3 heroes** — two ranged **Archer/Mage** heroes
-holding the **rune bastions** that flank the road, and a **Fighter** standing in the **vanguard** in
-front of the castle to block the choke — each with **2 matching support units**. Survive 10 waves per
-map, upgrade between waves, earn summon crystals, and pull new heroes from the gacha.
+bridge — toward the **player's castle**. You **build towers** on the dirt-circle plots along the
+road — **Archer** (single-target), **Mage** (splash) and **Guard Post** (spawns blocking infantry) —
+and deploy **3 gacha heroes**: two ranged **Archer/Mage** heroes hold the **rune bastions** that
+flank the road, and a **Fighter** hero stands on the road in front of the castle to block the choke.
+Heroes fight **alone** (no support units). Survive 10 waves per map, spend gold on towers and
+upgrades, earn summon crystals, and pull new heroes from the gacha.
 
 This repository implements the [`Last Wall` design/build file](#design-source) as a **browser
 game** — a single-page, dependency-free app using **vanilla JavaScript + HTML5 Canvas**. The code
@@ -46,12 +48,17 @@ Progress (currencies, heroes, levels, team, campaign) saves automatically to `lo
    **1 Epic Crystal** and unlocks the next map.
 5. **Summon** — spend crystals on two banners; level up and re-team your roster.
 
-### Classes & positions (exactly 3 hero slots)
-- **Vanguard** — Fighters only (tanky melee blocker + small cleave), placed in front of the castle.
+### Towers (built on plots for gold)
+- Tap a **dirt-circle plot** during battle to build an **Archer** (fast single-target), **Mage**
+  (splash) or **Guard Post** tower. Guard Posts have no ranged attack — they maintain a squad of
+  **blocking infantry** that march to the path and body-block monsters (respawning when killed).
+- Towers auto-target and auto-fire; sell a tower back for a fraction of its cost.
+
+### Heroes & positions (exactly 3 hero slots, deployed alone)
+- **Fighter** — placed on the road in front of the castle; blocks the choke (melee + small cleave).
 - **Left / Right Bastion** — Archers or Mages only (Archer = long-range single target; Mage =
-  shorter range with splash).
-- Each hero auto-spawns **2 matching support units** (40% HP / 35% ATK of the parent). Units
-  despawn when their hero dies and are re-manned each wave.
+  shorter range with splash), standing alone on the rune bastions.
+- Heroes fight **by themselves** — no support units.
 
 ### Gacha rates
 - **Regular banner:** Rare 85% · Epic 15% · Legendary 0%.
@@ -197,10 +204,11 @@ npm run shots     # renders in Chromium -> ./screenshots, reports console errors
 |---|---|
 | Demonic Gate -> winding road -> river/bridge -> castle, 2 rune bastions | `battle/BattleMap.js`, `config.lanes` |
 | Enemies spawn at the Demonic Gate, follow 3 road trails | `battle/Spline.js`, `Enemy.js`, `BattleManager.pickLane` |
-| 3 hero positions; Fighter holds the vanguard, bastions=Archer/Mage | `core/HeroCollection.js`, `BattleManager._deployTeam` |
+| 3 hero positions; Fighter on the path, bastions=Archer/Mage (alone) | `core/HeroCollection.js`, `BattleManager._deployTeam` |
 | Landscape road + roguelite affix waves + per-hero active skills | `BattleManager`, `config.AFFIXES/ACTIVE_SKILLS`, `ui/UI.js` |
-| Each hero spawns 2 matching support units | `battle/Hero.spawnSupportUnits` |
-| Enemies blocked at the vanguard by the Fighter group | `BattleManager._updateBlocking`, `Enemy.update` |
+| Build Archer/Mage/Guard towers on plots for gold (auto-fire) | `battle/Tower.js`, `BattleManager.buildTower`, `config.PLOTS/TOWER_TYPES` |
+| Guard Post spawns blocking infantry on the path | `battle/Infantry.js`, `Tower._updateGuard` |
+| Enemies blocked by the Fighter hero + guard infantry | `BattleManager._updateBlocking/_blockerLines`, `Enemy.update` |
 | Turret fires automatically | `battle/Turret.js` |
 | Gold + Regular Crystal each wave; Epic Crystal each city | `core/GameInstance.rewardWave / completeCity` |
 | Upgrade Heroes / Wall / Turret between waves | `BattleManager.buyUpgrade`, `ui/UI._showUpgradePanel` |
