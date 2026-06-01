@@ -324,7 +324,7 @@ LW.Config = {
   anchors: {
     Anchor_Bastion_Left_Hero: { x: 213, y: 340 },      // Hero centred on Bastion 1 (lower-left platform)
     Anchor_Bastion_Right_Hero: { x: 545, y: 134 },     // Hero centred on Bastion 2 (upper-centre platform)
-    Anchor_Bridge_Hero: { x: 780, y: 332 },            // Fighter hero, centred on the road before the castle
+    Anchor_Bridge_Hero: { x: 730, y: 336 },            // Fighter hero, centred on the road before the castle
     Anchor_EnemySpawn_Top: { x: 58, y: 132 },          // Demonic Gate (path start)
     Anchor_CityDamagePoint: { x: 856, y: 400 },        // Castle gate (path end)
     Anchor_Turret_Main: { x: 888, y: 372 },            // Castle cannon
