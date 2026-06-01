@@ -117,9 +117,12 @@ Files map directly onto the blueprints from the build file:
 
 ```
 index.html              # loads all modules in order; landscape (16:9) stage
+assets/map_ironcove.png # painted "Ironcove Pass" battle map (drawn as the background)
+assets/towers/          # transparent tower sprites a hero garrisons (archer/mage/guard)
+assets/*_Tower.jpg      # source asset sheets the tower sprites were extracted from
 assets/sprites/         # 25 painted, transparent character/enemy sprites
 css/style.css           # stylized-fantasy mobile theme (landscape)
-js/battle/BattleMap.js  # procedurally paints the "Ironcove Pass" map each battle
+js/battle/BattleMap.js  # draws the Ironcove Pass map + the garrisoned towers
 js/
   util.js               # math, RNG, weighted pick, tiny DOM + event helpers
   data/

@@ -18,6 +18,16 @@ LW.Config = {
    * The art must match the road traced by `lanes` below (16:9 landscape). */
   MAP_IMAGE: "assets/map_ironcove.png",
 
+  /* Defensive towers a deployed hero garrisons, by class. Each is a painted
+   * transparent sprite (extracted from the asset sheets) drawn at the hero's
+   * anchor, behind the hero. `h` = logical draw height; `dy` nudges the tower's
+   * foot relative to the anchor so the hero stands at its base. */
+  TOWERS: {
+    Archer: { img: "assets/towers/tower_archer.png", h: 126, dy: 8 },
+    Mage: { img: "assets/towers/tower_mage.png", h: 132, dy: 8 },
+    Fighter: { img: "assets/towers/tower_guard.png", h: 120, dy: 8 },
+  },
+
   /* ---- Campaign ------------------------------------------------------- */
   CITIES: 10,
   WAVES_PER_CITY: 10,
@@ -258,12 +268,12 @@ LW.Config = {
    * bastions flanking the road; the Fighter stands in the vanguard on the road
    * just before the castle and blocks its centre. */
   anchors: {
-    Anchor_Bastion_Left_Hero: { x: 198, y: 300 },     // Hero Bastion 1 (lower-left platform)
-    Anchor_Bastion_Left_Unit_1: { x: 176, y: 312 },
-    Anchor_Bastion_Left_Unit_2: { x: 220, y: 312 },
-    Anchor_Bastion_Right_Hero: { x: 545, y: 86 },      // Hero Bastion 2 (upper-centre platform)
-    Anchor_Bastion_Right_Unit_1: { x: 523, y: 98 },
-    Anchor_Bastion_Right_Unit_2: { x: 567, y: 98 },
+    Anchor_Bastion_Left_Hero: { x: 196, y: 352 },     // Hero Bastion 1 (lower-left platform)
+    Anchor_Bastion_Left_Unit_1: { x: 168, y: 366 },
+    Anchor_Bastion_Left_Unit_2: { x: 224, y: 366 },
+    Anchor_Bastion_Right_Hero: { x: 545, y: 124 },     // Hero Bastion 2 (upper-centre platform)
+    Anchor_Bastion_Right_Unit_1: { x: 519, y: 136 },
+    Anchor_Bastion_Right_Unit_2: { x: 571, y: 136 },
     Anchor_Bridge_Hero: { x: 820, y: 350 },            // Vanguard on the road before the castle
     Anchor_Bridge_Unit_1: { x: 800, y: 366 },
     Anchor_Bridge_Unit_2: { x: 842, y: 338 },

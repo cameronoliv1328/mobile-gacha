@@ -616,6 +616,33 @@ LW.BattleMap = class BattleMap {
     g.restore();
   }
 
+  // Painted defensive towers, one per deployed hero, drawn at the hero anchor
+  // (behind the hero sprite). Archer/Mage garrison their bastion; the Fighter
+  // mans the guard post in the vanguard.
+  renderTowers(ctx) {
+    const cfg = LW.Config.TOWERS;
+    const imgs = LW.assets && LW.assets.towers;
+    if (!cfg || !imgs) return;
+    for (const hero of this.battle.heroes) {
+      const t = cfg[hero.cls];
+      const img = imgs[hero.cls];
+      if (!t || !img || !img.complete || !img.naturalWidth) continue;
+      const depth = this.depthScale(hero.y);
+      const h = t.h * depth;
+      const w = h * (img.naturalWidth / img.naturalHeight);
+      const footY = hero.y + (t.dy || 0) * depth;
+      ctx.save();
+      ctx.globalAlpha = 1;
+      // Soft contact shadow under the tower.
+      ctx.fillStyle = "rgba(0,0,0,0.20)";
+      ctx.beginPath();
+      ctx.ellipse(hero.x, footY - 2, w * 0.42, h * 0.10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.drawImage(img, hero.x - w / 2, footY - h, w, h);
+      ctx.restore();
+    }
+  }
+
   // Subtle atmospheric overlay drawn above the actors to focus the action.
   renderForeground(ctx) {
     const vg = ctx.createRadialGradient(this.W / 2, this.H * 0.5, this.H * 0.42, this.W / 2, this.H * 0.54, this.H * 1.1);

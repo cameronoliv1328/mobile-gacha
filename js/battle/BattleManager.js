@@ -681,6 +681,9 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   render(ctx) {
     this.map.renderBackground(ctx);
 
+    // Defensive towers the heroes garrison (drawn under the actors).
+    this.map.renderTowers(ctx);
+
     // Ground-level VFX under the actors.
     for (const e of this.effects) if (e.kind === "ring" || e.kind === "flash") e.render(ctx);
 
