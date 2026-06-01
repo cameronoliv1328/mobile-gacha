@@ -27,7 +27,8 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     const fa = this.map.getAnchor("Anchor_Bridge_Hero");
     this.blockDistance = this._distanceOn(this.spline, fa.x, fa.y + 4);
     this.gateDistance = Math.max(0, this.blockDistance - 150);
-    this.laneGate = this.lanes.map((s) => this._gateDistOn(s, 690)); // for burrowers
+    // Burrowers surface just before the vanguard choke.
+    this.laneGate = this.lanes.map((s) => Math.max(0, this._distanceOn(s, fa.x, fa.y) - 40));
 
     this.heroes = [];
     this.heroesByPos = {};
@@ -487,8 +488,9 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
 
   damageCity(amount, enemy) {
     this.cityHP = Math.max(0, this.cityHP - amount);
-    this.addEffect(new LW.Effect("flash", { x: this.map.anchors.Anchor_CityDamagePoint.x, y: this.map.H - 30, radius: 26, color: "#ff5a5a", life: 0.4 }));
-    this.addEffect(new LW.Effect("text", { x: this.map.W / 2, y: this.map.H - 60, text: "-" + amount + " City HP", color: "#ff8a8a", size: 15, bold: true, vy: -24, life: 0.9 }));
+    const cp = this.map.anchors.Anchor_CityDamagePoint;
+    this.addEffect(new LW.Effect("flash", { x: cp.x, y: cp.y, radius: 28, color: "#ff5a5a", life: 0.4 }));
+    this.addEffect(new LW.Effect("text", { x: cp.x, y: cp.y - 34, text: "-" + amount + " City HP", color: "#ff8a8a", size: 15, bold: true, vy: -24, life: 0.9 }));
     this.emit("city", this.cityHP);
     if (this.cityHP <= 0) this._defeat();
   }
@@ -600,6 +602,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
 
     // Friendly units idle harmlessly when there are no enemies.
     for (const h of this.heroes) h.update(dt);
+    this.map.updateTowers(dt); // garrisoned-tower fire animations (reads hero swings)
     for (const u of this.units) u.update(dt);
     this.turret.update(dt);
     for (const p of this.projectiles) p.update(dt);
@@ -678,6 +681,9 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
 
   render(ctx) {
     this.map.renderBackground(ctx);
+
+    // Defensive towers the heroes garrison (drawn under the actors).
+    this.map.renderTowers(ctx);
 
     // Ground-level VFX under the actors.
     for (const e of this.effects) if (e.kind === "ring" || e.kind === "flash") e.render(ctx);

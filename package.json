@@ -9,5 +9,8 @@
     "shots": "node test/shots.js"
   },
   "keywords": ["game", "tower-defense", "gacha", "canvas", "vanilla-js"],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
 }

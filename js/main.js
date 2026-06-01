@@ -7,12 +7,24 @@ window.LW = window.LW || {};
 
 LW.App = class App {
   constructor() {
-    // Preload the painted battlefield illustration used by every battle.
     LW.assets = LW.assets || {};
-    if (!LW.assets.battlefield) {
-      const bf = new Image();
-      bf.src = "assets/battlefield.jpg";
-      LW.assets.battlefield = bf;
+    // Optional painted battle map; BattleMap falls back to procedural art if
+    // the file is missing or fails to load.
+    if (LW.Config.MAP_IMAGE && !LW.assets.mapImage) {
+      const mi = new Image();
+      mi.src = LW.Config.MAP_IMAGE;
+      LW.assets.mapImage = mi;
+    }
+
+    // Painted defensive-tower frames (per hero class), drawn under heroes.
+    LW.assets.towers = LW.assets.towers || {};
+    for (const cls in LW.Config.TOWERS) {
+      if (LW.assets.towers[cls]) continue;
+      LW.assets.towers[cls] = (LW.Config.TOWERS[cls].frames || []).map((src) => {
+        const im = new Image();
+        im.src = src;
+        return im;
+      });
     }
 
     this.game = new LW.GameInstance();
