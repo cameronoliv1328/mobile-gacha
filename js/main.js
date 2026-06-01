@@ -16,11 +16,11 @@ LW.App = class App {
       LW.assets.mapImage = mi;
     }
 
-    // Painted defensive-tower frames (per hero class), drawn under heroes.
+    // Painted, animated tower frames keyed by tower type (archer/mage/guard).
     LW.assets.towers = LW.assets.towers || {};
-    for (const cls in LW.Config.TOWERS) {
-      if (LW.assets.towers[cls]) continue;
-      LW.assets.towers[cls] = (LW.Config.TOWERS[cls].frames || []).map((src) => {
+    for (const key in LW.Config.TOWER_TYPES) {
+      if (LW.assets.towers[key]) continue;
+      LW.assets.towers[key] = (LW.Config.TOWER_TYPES[key].frames || []).map((src) => {
         const im = new Image();
         im.src = src;
         return im;
@@ -178,14 +178,27 @@ LW.App = class App {
   }
 
   _onPointer(e) {
-    if (this.mode !== "battle" || !this.battle || this.paused || !this.armedSkill) return;
-    const h = this.battle.heroByPos(this.armedSkill);
-    if (h) {
-      const w = this._toWorld(e);
-      const a = this._clampAim(h, w.x, w.y);
-      this.battle.castHeroSkill(this.armedSkill, a.x, a.y);
+    if (this.mode !== "battle" || !this.battle || this.paused) return;
+    const w = this._toWorld(e);
+
+    // Aiming a hero skill takes priority.
+    if (this.armedSkill) {
+      const h = this.battle.heroByPos(this.armedSkill);
+      if (h) {
+        const a = this._clampAim(h, w.x, w.y);
+        this.battle.castHeroSkill(this.armedSkill, a.x, a.y);
+      }
+      this.armedSkill = null;
+      return;
     }
-    this.armedSkill = null;
+
+    // Otherwise a tap selects a build plot or an existing tower (build/sell UI).
+    const plotIdx = this.battle.plotAt(w.x, w.y, 24);
+    if (plotIdx >= 0) {
+      this.ui.openTowerMenu(plotIdx);
+    } else {
+      this.ui.closeTowerMenu();
+    }
   }
 
   _drawAim(ctx) {

@@ -41,10 +41,15 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.affixHeroRangeMult = 1;
     this.nextWaveData = null; // pre-generated next wave (drives the preview)
     this.waveOptions = []; // [{ affix }] offered between waves
-    this.units = []; // support units
+    this.units = []; // guard-post infantry (and any future friendly units)
     this.enemies = [];
     this.projectiles = [];
     this.effects = [];
+
+    // Buildable towers occupying the dirt-circle plots.
+    this.towers = [];
+    this.plotTowers = new Array((LW.Config.PLOTS || []).length).fill(null);
+    this.highlightPlot = -1; // plot index the build UI is focused on
 
     this.runBuffs = { heroAtk: 1, heroHp: 1 };
     this.purchaseCounts = { hero: 0, wall: 0, turret: 0 };
@@ -122,10 +127,12 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   _deployTeam() {
     const A = this.map.anchors;
     const team = this.game.heroes.getTeam();
+    // Heroes deploy ALONE (no support units): two ranged on the bastions, the
+    // Fighter on the road in front of the castle.
     const slots = [
-      { pos: "bridge", id: team.bridge, hero: "Anchor_Bridge_Hero", units: ["Anchor_Bridge_Unit_1", "Anchor_Bridge_Unit_2"] },
-      { pos: "left", id: team.left, hero: "Anchor_Bastion_Left_Hero", units: ["Anchor_Bastion_Left_Unit_1", "Anchor_Bastion_Left_Unit_2"] },
-      { pos: "right", id: team.right, hero: "Anchor_Bastion_Right_Hero", units: ["Anchor_Bastion_Right_Unit_1", "Anchor_Bastion_Right_Unit_2"] },
+      { pos: "bridge", id: team.bridge, hero: "Anchor_Bridge_Hero" },
+      { pos: "left", id: team.left, hero: "Anchor_Bastion_Left_Hero" },
+      { pos: "right", id: team.right, hero: "Anchor_Bastion_Right_Hero" },
     ];
     for (const s of slots) {
       const def = LW.HeroData.byId(s.id);
@@ -134,8 +141,6 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       const am = this.game.heroes.abilityMods(s.id);
       const ha = A[s.hero];
       const hero = new LW.Hero(this, { def, position: s.pos, x: ha.x, y: ha.y, baseStats: base, abilityMods: am });
-      hero.unitAnchors = s.units.map((n) => A[n]);
-      hero.spawnSupportUnits(hero.unitAnchors);
       this.heroes.push(hero);
       this.heroesByPos[s.pos] = hero;
       if (s.pos === "bridge") this.bridgeHero = hero;
@@ -148,6 +153,50 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
       h.synergyMods = this.synergy;
       h.applyBuffs();
     }
+  }
+
+  /* ---- Buildable towers on plots -------------------------------------- */
+
+  // True if a tower type can be built on the given plot right now.
+  canBuild(plotIndex, typeKey) {
+    const def = LW.Config.TOWER_TYPES[typeKey];
+    if (!def) return false;
+    if (this.plotTowers[plotIndex]) return false; // occupied
+    return this.game.state.gold >= def.cost;
+  }
+
+  buildTower(plotIndex, typeKey) {
+    if (!this.canBuild(plotIndex, typeKey)) return { ok: false };
+    const def = LW.Config.TOWER_TYPES[typeKey];
+    if (!this.game.spendGold(def.cost)) return { ok: false };
+    const tower = new LW.Tower(this, LW.Config.PLOTS[plotIndex], typeKey);
+    this.plotTowers[plotIndex] = tower;
+    this.towers.push(tower);
+    this.emit("change");
+    return { ok: true, tower };
+  }
+
+  sellTower(plotIndex) {
+    const tower = this.plotTowers[plotIndex];
+    if (!tower) return { ok: false };
+    const refund = tower.sellValue();
+    tower.remove();
+    this.towers = this.towers.filter((t) => t !== tower);
+    this.plotTowers[plotIndex] = null;
+    this.game.addGold(refund);
+    this.emit("change");
+    return { ok: true, refund };
+  }
+
+  // Nearest empty plot to a tapped point (for the build UI). Returns index|-1.
+  plotAt(x, y, maxDist) {
+    const plots = LW.Config.PLOTS || [];
+    let best = -1, bestD = (maxDist || 26) * (maxDist || 26);
+    for (let i = 0; i < plots.length; i++) {
+      const d = LW.util.dist2(x, y, plots[i].x, plots[i].y);
+      if (d <= bestD) { bestD = d; best = i; }
+    }
+    return best;
   }
 
   /* ---- Wave flow ------------------------------------------------------ */
@@ -179,17 +228,18 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.spawnCursor = 0;
     this.waveTimer = 0;
 
-    // Revive + heal the squad and re-man each position with fresh units.
+    // Revive + heal each hero (heroes fight alone — no support squads).
     for (const h of this.heroes) {
       h.alive = true;
       h.hp = h.maxHP;
       h.attackCD = Math.random() * h.attackInterval;
       h.resetForWave();
-      for (const u of h.supportUnits) u.alive = false; // retire old squad quietly
-      h.supportUnits = [];
-      h.spawnSupportUnits(h.unitAnchors);
       h.applyBuffs();
     }
+    // Guard-post infantry retire between waves; each guard tower re-mans fresh.
+    for (const u of this.units) u.alive = false;
+    this.units = [];
+    for (const t of this.towers) { t.infantry = []; t.spawnCD = 0; }
     this._cleanup();
 
     this.phase = "fighting";
@@ -276,16 +326,18 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   }
 
   hasLivingBlocker() {
-    return !!(this.bridgeHero && this.bridgeHero.alive);
+    if (this.bridgeHero && this.bridgeHero.alive) return true;
+    for (const u of this.units) if (u.alive && u.role === "Blocker") return true;
+    return false;
   }
 
+  // All living melee blockers on the blocked lane: the Fighter hero (final line
+  // at the castle) plus any guard-post infantry holding the path.
   bridgeBlockers() {
     const out = [];
     const h = this.bridgeHero;
-    if (h && h.alive) {
-      out.push(h);
-      for (const u of h.supportUnits) if (u.alive) out.push(u);
-    }
+    if (h && h.alive) out.push(h);
+    for (const u of this.units) if (u.alive && u.role === "Blocker") out.push(u);
     return out;
   }
 
@@ -499,23 +551,51 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.killCount++;
   }
 
-  /* ---- Blocking / queueing at the bridge ------------------------------ */
+  /* ---- Blocking / queueing on the path --------------------------------
+   * The Fighter hero holds the final line in front of the castle; guard-post
+   * infantry hold their own points further up the path. Each blocker stops a
+   * few monsters at its lane-distance. Monsters resume marching past once their
+   * blocker dies. Only the centre (blocked) lane has melee blockers. */
+
+  // Lane-distance of a blocker (cached briefly), and how many it can hold.
+  _blockerLines() {
+    const lines = [];
+    const h = this.bridgeHero;
+    if (h && h.alive) lines.push({ blocker: h, dist: this.blockDistance, cap: 3 });
+    for (const u of this.units) {
+      if (!u.alive || u.role !== "Blocker") continue;
+      const d = this._distanceOn(this.spline, u.guardX != null ? u.guardX : u.x, u.guardY != null ? u.guardY : u.y);
+      lines.push({ blocker: u, dist: d, cap: 1 });
+    }
+    return lines;
+  }
 
   _updateBlocking() {
-    if (!this.hasLivingBlocker()) {
+    const lines = this._blockerLines();
+    if (!lines.length) {
       for (const e of this.enemies) if (e.state === "blocked") e.state = "move";
       return;
     }
-    const band = this.gateDistance - 16;
-    // Only the centre lane has the Fighter; side lanes are never blocked.
-    const queued = this.enemies.filter((e) => e.alive && e.blockable && e.laneBlocked && e.splineDistance >= band);
-    queued.sort((a, b) => b.splineDistance - a.splineDistance);
-    const spacing = 18;
-    for (let i = 0; i < queued.length; i++) {
-      const e = queued[i];
+    lines.sort((a, b) => a.dist - b.dist); // nearest the spawn first
+    for (const l of lines) l.held = 0;
+
+    // Walk monsters from most-advanced backward; assign each to the first
+    // blocker line at/behind it with spare capacity.
+    const cand = this.enemies.filter((e) => e.alive && e.blockable && e.laneBlocked);
+    cand.sort((a, b) => b.splineDistance - a.splineDistance);
+    for (const e of cand) {
+      let chosen = null;
+      // Prefer the closest blocker line that is just ahead of the monster.
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const l = lines[i];
+        if (l.dist <= e.splineDistance + 22 && l.held < l.cap) { chosen = l; break; }
+      }
+      if (!chosen) { if (e.state === "blocked") e.state = "move"; continue; }
+      chosen.held++;
       e.state = "blocked";
-      e.holdDistance = LW.util.clamp(this.blockDistance - i * spacing, this.gateDistance, this.blockDistance);
-      e.lateral = ((i % 3) - 1) * 11;
+      e.blockLineDist = chosen.dist;
+      e.holdDistance = LW.util.clamp(chosen.dist - (chosen.held - 1) * 16, chosen.dist - 40, chosen.dist);
+      e.lateral = ((chosen.held % 3) - 1) * 11;
       if (!e.target || !e.target.alive) e.target = this.nearestBlocker(e.x, e.y);
     }
   }
@@ -596,13 +676,14 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
         }
       }
       this._enemySupportPass();
+      for (const t of this.towers) t.update(dt); // guard posts spawn infantry mid-wave
       this._updateBlocking();
       for (const e of this.enemies) e.update(dt);
     }
 
     // Friendly units idle harmlessly when there are no enemies.
     for (const h of this.heroes) h.update(dt);
-    this.map.updateTowers(dt); // garrisoned-tower fire animations (reads hero swings)
+    if (this.phase !== "fighting") for (const t of this.towers) t.update(dt);
     for (const u of this.units) u.update(dt);
     this.turret.update(dt);
     for (const p of this.projectiles) p.update(dt);
@@ -682,14 +763,15 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   render(ctx) {
     this.map.renderBackground(ctx);
 
-    // Defensive towers the heroes garrison (drawn under the actors).
-    this.map.renderTowers(ctx);
+    // Empty build plots glow as buildable rings (only while the player can act).
+    this.map.renderPlots(ctx, this.plotTowers, this.highlightPlot);
 
     // Ground-level VFX under the actors.
     for (const e of this.effects) if (e.kind === "ring" || e.kind === "flash") e.render(ctx);
 
-    // Actors sorted by Y for a coherent 2.5D overlap.
+    // Actors (towers, enemies, heroes, infantry) sorted by Y for 2.5D overlap.
     const actors = [];
+    for (const t of this.towers) actors.push(t);
     for (const e of this.enemies) if (e.alive) actors.push(e);
     for (const h of this.heroes) if (h.alive) actors.push(h);
     for (const u of this.units) if (u.alive) actors.push(u);

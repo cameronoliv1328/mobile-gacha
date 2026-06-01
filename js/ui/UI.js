@@ -35,6 +35,7 @@ LW.UI = class UI {
 
   enterMeta(screen) {
     this.app.mode = "meta";
+    this.closeTowerMenu();
     this.battleLayer.classList.add("hidden");
     this.uiRoot.classList.remove("hidden");
     LW.util.clear(this.battleOverlay);
@@ -765,7 +766,7 @@ LW.UI = class UI {
       statRow("ATK", String(stats.atk)),
       statRow("Range", String(Math.round(stats.range))),
       statRow("Atk Speed", (1 / stats.attackInterval).toFixed(2) + "/s"),
-      statRow("Support", "2× " + def.class + " (" + Math.round(LW.Config.SUPPORT_HP_PCT * 100) + "% HP / " + Math.round(LW.Config.SUPPORT_ATK_PCT * 100) + "% ATK)"),
+      statRow("Role", def.class === "Fighter" ? "Blocks the path" : "Holds a bastion"),
     ]);
     body.appendChild(grid);
 
@@ -848,11 +849,77 @@ LW.UI = class UI {
     this.uiRoot.classList.add("hidden");
     this.battleLayer.classList.remove("hidden");
     LW.util.clear(this.battleOverlay);
+    this.closeTowerMenu();
     this._buildHud();
     battle.on("phase", (p) => this._onPhase(p));
     battle.on("reward", (r) => this._onReward(r));
     battle.on("victory", (v) => this._onVictory(v));
     battle.on("defeat", () => this._onDefeat());
+  }
+
+  /* ---- Tower build / sell radial menu --------------------------------- */
+
+  // World (960x540) -> on-stage percentage, so the popup tracks the plot.
+  _worldToPct(x, y) {
+    return { left: (x / LW.Config.WORLD_W) * 100, top: (y / LW.Config.WORLD_H) * 100 };
+  }
+
+  openTowerMenu(plotIndex) {
+    if (!this.battle) return;
+    this.closeTowerMenu();
+    this.battle.highlightPlot = plotIndex;
+    const plot = LW.Config.PLOTS[plotIndex];
+    const existing = this.battle.plotTowers[plotIndex];
+    const pos = this._worldToPct(plot.x, plot.y);
+
+    const menu = this.el("div", { class: "tower-menu" });
+    menu.style.left = pos.left + "%";
+    menu.style.top = pos.top + "%";
+
+    if (existing) {
+      // Occupied: show name + sell.
+      menu.appendChild(this.el("div", { class: "tm-title", text: existing.def.name }));
+      const sell = this.el("button", { class: "tm-opt sell", onclick: () => {
+        const r = this.battle.sellTower(plotIndex);
+        if (r.ok) this.toast("Sold for " + r.refund + " gold");
+        this.closeTowerMenu();
+      } }, [this.el("span", { class: "tm-ic", text: "♻" }), this.el("span", { text: "Sell +" + existing.sellValue() })]);
+      menu.appendChild(sell);
+    } else {
+      // Empty: offer the three tower types.
+      menu.appendChild(this.el("div", { class: "tm-title", text: "Build Tower" }));
+      const row = this.el("div", { class: "tm-row" });
+      for (const key of ["archer", "mage", "guard"]) {
+        const t = LW.Config.TOWER_TYPES[key];
+        const can = this.battle.canBuild(plotIndex, key);
+        const btn = this.el("button", {
+          class: "tm-opt" + (can ? "" : " disabled"),
+          title: t.name,
+          onclick: () => {
+            const r = this.battle.buildTower(plotIndex, key);
+            if (r.ok) this.toast(t.name + " built");
+            else this.toast("Not enough gold");
+            this.closeTowerMenu();
+          },
+        }, [
+          this.el("span", { class: "tm-ic", text: t.icon }),
+          this.el("span", { class: "tm-name", text: t.name.replace(" Tower", "").replace(" Post", "") }),
+          this.el("span", { class: "tm-cost" }, [this._gem("gold"), this.el("span", { text: " " + t.cost })]),
+        ]);
+        row.appendChild(btn);
+      }
+      menu.appendChild(row);
+    }
+
+    const close = this.el("button", { class: "tm-close", text: "✕", onclick: () => this.closeTowerMenu() });
+    menu.appendChild(close);
+    this.battleHud.appendChild(menu);
+    this.towerMenu = menu;
+  }
+
+  closeTowerMenu() {
+    if (this.towerMenu) { this.towerMenu.remove(); this.towerMenu = null; }
+    if (this.battle) this.battle.highlightPlot = -1;
   }
 
   _buildHud() {
@@ -941,6 +1008,7 @@ LW.UI = class UI {
 
   _onPhase(p) {
     LW.util.clear(this.battleOverlay);
+    this.closeTowerMenu();
     if (p === "upgrade") this._showUpgradePanel();
   }
 
