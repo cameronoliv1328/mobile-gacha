@@ -17,6 +17,17 @@ LW.Config = {
   CAM_MIN_ZOOM: 1.0,
   CAM_MAX_ZOOM: 2.8,
 
+  /* Monster sizing relative to the road. Enemy sprites are sized so their
+   * on-path WIDTH is a fraction of the painted road width: the smallest
+   * monsters span ~1/4 of the road, the largest (bosses) ~7/8. Width is
+   * interpolated per enemy from its `radius`, then the sprite height is derived
+   * from the image's aspect ratio at draw time (so widths are exact). */
+  PATH_WIDTH: 64,            // painted road width in world units (measured)
+  ENEMY_MIN_WIDTH_FRAC: 0.25, // smallest monster = 1/4 of the road
+  ENEMY_MAX_WIDTH_FRAC: 0.875, // boss = 7/8 of the road
+  ENEMY_MIN_RADIUS: 8,       // slimelet (maps to MIN width)
+  ENEMY_MAX_RADIUS: 24,      // ogre boss (maps to MAX width)
+
   SAVE_KEY: "lastwall.save.v1",
 
   /* Optional painted battle map. If this image is present it's drawn as the
@@ -312,7 +323,7 @@ LW.Config = {
   speedOptions: [1, 2, 4, 8],
   // Global enemy march-speed multiplier — tuned against the difficulty band so
   // the road's time-to-reach / time-in-range keeps the campaign curve intact.
-  ENEMY_SPEED_MULT: 1.0,
+  ENEMY_SPEED_MULT: 1.4,
 
   /* ---- Layout anchors (logical coordinates, 960x540 landscape) ---------
    * Traced onto the painted Ironcove Pass map (assets/map_ironcove.png):
@@ -340,8 +351,8 @@ LW.Config = {
   blockLane: 1,
   laneWeights: [0.22, 0.56, 0.22],
   lanes: [
-    { points: [{ x: 61, y: 118 }, { x: 144, y: 137 }, { x: 206, y: 160 }, { x: 247, y: 204 }, { x: 256, y: 233 }, { x: 289, y: 238 }, { x: 322, y: 214 }, { x: 378, y: 179 }, { x: 449, y: 152 }, { x: 527, y: 142 }, { x: 602, y: 144 }, { x: 654, y: 164 }, { x: 695, y: 205 }, { x: 725, y: 256 }, { x: 770, y: 304 }, { x: 821, y: 352 }, { x: 865, y: 389 }] },
-    { points: [{ x: 58, y: 132 }, { x: 140, y: 150 }, { x: 198, y: 172 }, { x: 236, y: 212 }, { x: 248, y: 244 }, { x: 292, y: 252 }, { x: 330, y: 226 }, { x: 384, y: 192 }, { x: 452, y: 166 }, { x: 528, y: 156 }, { x: 600, y: 158 }, { x: 646, y: 176 }, { x: 684, y: 214 }, { x: 714, y: 264 }, { x: 760, y: 314 }, { x: 812, y: 362 }, { x: 856, y: 400 }] },
-    { points: [{ x: 55, y: 146 }, { x: 136, y: 163 }, { x: 190, y: 184 }, { x: 225, y: 220 }, { x: 240, y: 255 }, { x: 295, y: 266 }, { x: 338, y: 238 }, { x: 390, y: 205 }, { x: 455, y: 180 }, { x: 529, y: 170 }, { x: 598, y: 172 }, { x: 638, y: 188 }, { x: 673, y: 223 }, { x: 703, y: 272 }, { x: 750, y: 324 }, { x: 803, y: 372 }, { x: 847, y: 411 }] },
+    { points: [{ x: 61, y: 119 }, { x: 144, y: 138 }, { x: 207, y: 163 }, { x: 251, y: 211 }, { x: 256, y: 241 }, { x: 291, y: 238 }, { x: 329, y: 209 }, { x: 387, y: 176 }, { x: 457, y: 153 }, { x: 540, y: 145 }, { x: 603, y: 149 }, { x: 656, y: 178 }, { x: 701, y: 225 }, { x: 719, y: 281 }, { x: 692, y: 330 }, { x: 628, y: 330 }, { x: 583, y: 301 }, { x: 556, y: 285 }, { x: 532, y: 300 }, { x: 538, y: 338 }, { x: 592, y: 372 }, { x: 668, y: 379 }, { x: 748, y: 371 }, { x: 810, y: 377 }, { x: 860, y: 392 }] },
+    { points: [{ x: 58, y: 132 }, { x: 140, y: 150 }, { x: 200, y: 174 }, { x: 240, y: 218 }, { x: 250, y: 252 }, { x: 296, y: 250 }, { x: 336, y: 220 }, { x: 392, y: 188 }, { x: 460, y: 166 }, { x: 540, y: 158 }, { x: 600, y: 162 }, { x: 648, y: 188 }, { x: 690, y: 232 }, { x: 706, y: 280 }, { x: 686, y: 318 }, { x: 632, y: 318 }, { x: 590, y: 290 }, { x: 555, y: 272 }, { x: 520, y: 296 }, { x: 528, y: 346 }, { x: 588, y: 384 }, { x: 668, y: 392 }, { x: 748, y: 384 }, { x: 808, y: 390 }, { x: 856, y: 404 }] },
+    { points: [{ x: 55, y: 145 }, { x: 136, y: 162 }, { x: 193, y: 185 }, { x: 229, y: 225 }, { x: 244, y: 263 }, { x: 301, y: 262 }, { x: 343, y: 231 }, { x: 397, y: 200 }, { x: 463, y: 179 }, { x: 540, y: 171 }, { x: 597, y: 175 }, { x: 640, y: 198 }, { x: 679, y: 239 }, { x: 693, y: 279 }, { x: 680, y: 306 }, { x: 636, y: 306 }, { x: 597, y: 279 }, { x: 554, y: 259 }, { x: 508, y: 292 }, { x: 518, y: 354 }, { x: 584, y: 396 }, { x: 668, y: 405 }, { x: 748, y: 397 }, { x: 806, y: 403 }, { x: 852, y: 416 }] },
   ],
 };
