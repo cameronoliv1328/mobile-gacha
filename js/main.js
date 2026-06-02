@@ -167,13 +167,13 @@ LW.App = class App {
 
   /* ---- Battle lifecycle ---------------------------------------------- */
 
-  startBattle(cityIndex) {
+  startBattle(cityIndex, levelIndex) {
     if (!this.game.heroes.validateTeam()) {
       this.ui.toast("Your team is incomplete");
       this.ui.enterMeta("roster");
       return;
     }
-    this.battle = new LW.BattleManager(this.game, cityIndex);
+    this.battle = new LW.BattleManager(this.game, cityIndex, levelIndex || 0);
     this.paused = false;
     this.speed = 1;
     this.armedSkill = null;

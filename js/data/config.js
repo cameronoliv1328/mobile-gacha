@@ -93,9 +93,23 @@ LW.Config = {
     { x: 622, y: 250 },
   ],
 
-  /* ---- Campaign ------------------------------------------------------- */
+  /* ---- Campaign -------------------------------------------------------
+   * Two tiers: 10 LOCATIONS (castles), each with LEVELS_PER_CITY levels. A
+   * location's wave count grows with its index: Thornvale (0) = BASE_WAVES,
+   * and each later location adds WAVE_STEP. So Thornvale levels are 10 waves,
+   * Oakreach 11, … up to Last Wall at 19. */
   CITIES: 10,
-  WAVES_PER_CITY: 10,
+  LEVELS_PER_CITY: 10,
+  BASE_WAVES: 10,   // waves per level in the first location
+  WAVE_STEP: 1,     // extra waves per level for each later location
+  // Waves in a given location's levels.
+  wavesForCity(cityIndex) {
+    return this.BASE_WAVES + this.WAVE_STEP * (cityIndex || 0);
+  },
+  // Back-compat: the old fixed constant (first location's wave count).
+  get WAVES_PER_CITY() {
+    return this.BASE_WAVES;
+  },
 
   /* ---- Rarity --------------------------------------------------------- */
   RARITY: {
@@ -289,12 +303,15 @@ LW.Config = {
     turret: { baseCost: 65, costStep: 35, dmgPct: 0.15, cdReduce: 0.08, splashAt: 3, projAt: 5 },
   },
 
-  /* ---- Rewards -------------------------------------------------------- */
+  /* ---- Rewards --------------------------------------------------------
+   * waveGold scales with the location (city) and the wave within a level.
+   * levelGold/levelEpicCrystals are granted when a LEVEL is cleared and scale
+   * with both the location and the level index within it. */
   reward: {
     waveGold: (city, wave) => 35 + 8 * wave + 12 * city,
-    levelGold: (city) => 200 + 60 * city,
+    levelGold: (city, level) => 120 + 40 * city + 18 * (level || 0),
     waveCrystals: 1, // Regular Summon Crystal per wave
-    levelEpicCrystals: 1, // Epic Summon Crystal per level
+    levelEpicCrystals: 1, // Epic Summon Crystal per level cleared
     dupeGold: { Rare: 60, Epic: 180, Legendary: 500 },
   },
 

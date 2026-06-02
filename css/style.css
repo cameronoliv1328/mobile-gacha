@@ -218,6 +218,24 @@ body {
 .city-meta { font-size: 12px; color: var(--muted); }
 .city-status { font-weight: 700; color: var(--gold-2); font-size: 14px; }
 
+/* ---- Levels screen --------------------------------------------------- */
+.levels-sub { font-size: 12px; text-align: center; }
+.level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.level-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+  transition: transform 0.06s, border-color 0.15s;
+}
+.level-cell:active { transform: scale(0.96); }
+.level-cell.current { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 14px rgba(240, 185, 66, 0.28); }
+.level-cell.done { border-color: rgba(84, 192, 116, 0.5); }
+.level-cell.done .level-num { color: var(--green); }
+.level-cell.locked { opacity: 0.4; cursor: default; }
+.level-num { font-family: Georgia, serif; font-weight: 800; font-size: 26px; color: var(--gold-2); line-height: 1; }
+.level-lbl { font-size: 11px; color: var(--muted); }
+
 /* ---- Summon ---------------------------------------------------------- */
 
 .summon-screen { gap: 14px; }

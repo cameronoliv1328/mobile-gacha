@@ -9,11 +9,13 @@
 window.LW = window.LW || {};
 
 LW.BattleManager = class BattleManager extends LW.util.Emitter {
-  constructor(game, cityIndex) {
+  constructor(game, cityIndex, levelIndex) {
     super();
     this.game = game;
     this.cityIndex = cityIndex;
+    this.levelIndex = levelIndex || 0;
     this.cityName = LW.Levels.cityName(cityIndex);
+    this.totalWaves = LW.Levels.wavesPerLevel(cityIndex);
 
     this.lanes = LW.Config.lanes.map((l) => new LW.Spline(l.points));
     this.blockLane = LW.Config.blockLane;
@@ -74,7 +76,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
   start() {
     this._deployTeam();
     this.affix = LW.Config.AFFIXES[0];
-    this.nextWaveData = LW.Levels.getWave(this.cityIndex, 0);
+    this.nextWaveData = LW.Levels.getWave(this.cityIndex, this.levelIndex, 0);
     this.phase = "prep";
     this.prepTimer = 1.1;
     this.emit("phase", this.phase);
@@ -207,7 +209,7 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     this.pendingAffix = null;
     this.affixHeroRangeMult = (this.affix.hero && this.affix.hero.rangeMult) || 1;
 
-    const wave = this.nextWaveData || LW.Levels.getWave(this.cityIndex, idx);
+    const wave = this.nextWaveData || LW.Levels.getWave(this.cityIndex, this.levelIndex, idx);
     this.nextWaveData = null;
     this.waveScale = wave.scale;
     this.isBossWave = wave.isBoss;
@@ -258,14 +260,14 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     const reward = this.game.rewardWave(this.cityIndex, this.waveIndex, goldMult, bonusCrystals);
     this.emit("reward", { kind: "wave", reward, wave: this.waveIndex + 1 });
 
-    if (this.waveIndex >= LW.Config.WAVES_PER_CITY - 1) {
-      const cityReward = this.game.completeCity(this.cityIndex);
+    if (this.waveIndex >= this.totalWaves - 1) {
+      const cityReward = this.game.completeLevel(this.cityIndex, this.levelIndex);
       this.phase = "victory";
       this.emit("phase", this.phase);
       this.emit("victory", { waveReward: reward, cityReward });
     } else {
       // Pre-generate the next wave + offer affix options to choose from.
-      this.nextWaveData = LW.Levels.getWave(this.cityIndex, this.waveIndex + 1);
+      this.nextWaveData = LW.Levels.getWave(this.cityIndex, this.levelIndex, this.waveIndex + 1);
       this.waveOptions = this._genWaveOptions(this.nextWaveData.isBoss);
       this.pendingAffix = this.waveOptions[0].affix; // default: Standard
       this.phase = "upgrade";
@@ -792,8 +794,9 @@ LW.BattleManager = class BattleManager extends LW.util.Emitter {
     return {
       cityName: this.cityName,
       cityIndex: this.cityIndex,
+      levelIndex: this.levelIndex,
       wave: this.waveIndex + 1,
-      totalWaves: LW.Config.WAVES_PER_CITY,
+      totalWaves: this.totalWaves,
       gold: this.game.state.gold,
       cityHP: this.cityHP,
       cityMaxHP: this.cityMaxHP,
