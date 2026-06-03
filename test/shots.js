@@ -71,10 +71,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       g.state.heroes[id] = g.state.heroes[id] || { level: 6, copies: 0 };
       g.state.heroes[id].level = 6;
     }
-    g.state.heroes["fighter_brick"].copies = 4;
-    g.state.heroes["fighter_ironhide"].copies = 4;
-    g.state.heroes["archer_fletcher"].copies = 2;
-    g.state.heroes["mage_frost"].copies = 4;
+    g.state.heroes["fighter_brick"].copies = 3;   // fully collected -> all abilities + MAX
+    g.state.heroes["fighter_ironhide"].copies = 3;
+    g.state.heroes["archer_fletcher"].copies = 2; // partial -> tier II unlocked, tier III locked
+    g.state.heroes["mage_frost"].copies = 3;
     g.state.team = { bridge: "fighter_ironhide", left: "archer_fletcher", right: "mage_frost" }; // mono Ice major synergy
     g.persist();
     LW.app.ui.enterMeta("menu");
@@ -95,7 +95,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await sleep(300);
   await shot("08-roster");
   try {
-    await page.locator(".hero-card").first().click(); // Brick (4 copies -> all abilities)
+    await page.locator(".hero-card").first().click(); // Brick (3 copies -> all abilities)
     await sleep(400);
     await shot("09-hero-detail");
   } catch (e) { console.log("(hero detail: " + e.message.split("\n")[0] + ")"); }

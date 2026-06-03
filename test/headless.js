@@ -254,6 +254,24 @@ rg.state.epicPity = LW.Config.gacha.epic.pity;
 const dg = rg.summon.roll("epic");
 assert(dg.rarity !== "Legendary" && dg.downgraded, "forced legendary downgrades when pool empty");
 for (const id of legends) assert(rg.heroes.copies(id) <= maxC, "no legendary exceeds max copies");
+
+// Exclusive threshold: a Legendary must retire precisely on its 3rd copy — the
+// 4th time it is summoned (1 to own + 3 copies) — and stay in the pool until
+// then. (Regression: the 3rd copy must register as fully collected.)
+LW.SaveGame.clear();
+const xg = new LW.GameInstance();
+const xId = LW.HeroData.list.find((h) => h.rarity === "Legendary").id;
+const seen = [];
+for (let s = 1; s <= 4; s++) {
+  xg.heroes.addHero(xId); // summon the same legendary again
+  seen.push([xg.heroes.copies(xId), xg.heroes.isRetired(xId)]);
+}
+// summon -> [copies, retired]:  1:[0,false] 2:[1,false] 3:[2,false] 4:[3,true]
+assert(seen[0][0] === 0 && !seen[0][1], "summon 1: owned (0 copies), in pool");
+assert(seen[1][0] === 1 && !seen[1][1], "summon 2 (1st copy): still in pool");
+assert(seen[2][0] === 2 && !seen[2][1], "summon 3 (2nd copy): still in pool");
+assert(seen[3][0] === 3 &&  seen[3][1], "summon 4 (3rd copy): retired");
+assert(!xg.summon.availableOfRarity("Legendary").some((h) => h.id === xId), "3rd copy removes the legendary from the wish pool");
 console.log("  legendary retirement ok");
 
 /* ===================================================================== *
@@ -266,15 +284,15 @@ const fid = "fighter_brick";
 assert(g2.heroes.unlockedTiers(fid) === 0, "no abilities at 0 copies");
 assert(!g2.heroes.isAttuned(fid), "not attuned at 0 copies");
 
-// Copy thresholds 1 / 2 / 4 unlock tiers I / II / III.
+// Copy thresholds 1 / 2 / 3 unlock tiers I / II / III.
 g2.state.heroes[fid].copies = 1;
 assert(g2.heroes.unlockedTiers(fid) === 1 && g2.heroes.isAttuned(fid), "tier I (Attunement) at 1 copy");
 g2.state.heroes[fid].copies = 2;
 assert(g2.heroes.unlockedTiers(fid) === 2, "tier II at 2 copies");
 g2.state.heroes[fid].copies = 3;
-assert(g2.heroes.unlockedTiers(fid) === 2, "still tier II at 3 copies");
+assert(g2.heroes.unlockedTiers(fid) === 3, "tier III at 3 copies (fully collected)");
 g2.state.heroes[fid].copies = 4;
-assert(g2.heroes.unlockedTiers(fid) === 3, "tier III at 4 copies");
+assert(g2.heroes.unlockedTiers(fid) === 3, "tier count caps at 3 beyond full collection");
 
 const fmods = g2.heroes.abilityMods(fid);
 assert(fmods.reflect > 0, "fighter tier II grants reflect");

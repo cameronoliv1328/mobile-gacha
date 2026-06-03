@@ -183,12 +183,13 @@ LW.Config = {
    * Pulling a hero you already own grants a "copy". Copies unlock 3 ability
    * tiers; the third is the most powerful (a signature ultimate). Tier I is
    * "Attunement", which empowers the hero's element synergy contribution. */
-  ABILITY_UNLOCKS: [1, 2, 4], // copies required for tiers I, II, III
+  ABILITY_UNLOCKS: [1, 2, 3], // copies required for tiers I, II, III (3rd copy = fully collected)
 
   /* A hero is "fully collected" once its copy count reaches the final
-   * ABILITY_UNLOCKS threshold (every duplicate ability unlocked). Heroes of a
-   * rarity listed here are then RETIRED from the summon pool, so no duplicate
-   * of them can ever be pulled again. Legendaries are unique this way. */
+   * ABILITY_UNLOCKS threshold — the 3rd copy, i.e. the 4th time the hero is
+   * summoned (1 to own + 3 copies). Heroes of a rarity listed here are then
+   * RETIRED from the summon pool, so no duplicate of them can ever be pulled
+   * again. Legendaries are unique this way. */
   RETIRE_WHEN_MAXED: ["Legendary"],
 
   ABILITIES: {

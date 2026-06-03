@@ -76,7 +76,7 @@ Progress (currencies, heroes, levels, team, campaign) saves automatically to `lo
 Two power systems reward collecting and team-building:
 
 **Duplicate abilities** — every hero has **3 special abilities** unlocked by pulling **copies** of
-that hero (at **1 / 2 / 4** copies). The third unlock is the most powerful — a signature *ultimate*
+that hero (at **1 / 2 / 3** copies). The third unlock is the most powerful — a signature *ultimate*
 (e.g. Archer's *Rain of Arrows*, Mage's *Cataclysm*) or game-changer (Fighter's *Unbreakable*:
 cheat death once per wave). Lower tiers add stats and perks (reflect, extra projectile, slow-on-hit…).
 
