@@ -211,14 +211,6 @@ LW.App = class App {
 
   /* ---- Active-skill input -------------------------------------------- */
 
-  _toWorld(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * LW.Config.WORLD_W,
-      y: ((e.clientY - rect.top) / rect.height) * LW.Config.WORLD_H,
-    };
-  }
-
   // UI skill button tap: self-cast fires now; aimed skills enter aim mode.
   tapSkill(pos) {
     if (!this.battle) return;
