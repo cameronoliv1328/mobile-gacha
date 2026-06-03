@@ -81,16 +81,16 @@ LW.Config = {
   /* Dirt-circle build plots on the painted map (world coords). Towers may be
    * built only here. Traced onto assets/map_ironcove.png. */
   PLOTS: [
-    { x: 214, y: 150 },
-    { x: 306, y: 122 },
-    { x: 438, y: 120 },
-    { x: 360, y: 182 },
-    { x: 286, y: 208 },
-    { x: 480, y: 202 },
-    { x: 360, y: 250 },
-    { x: 292, y: 270 },
-    { x: 500, y: 300 },
-    { x: 622, y: 250 },
+    { x: 335, y: 175 },
+    { x: 425, y: 166 },
+    { x: 314, y: 240 },
+    { x: 355, y: 248 },
+    { x: 524, y: 240 },
+    { x: 450, y: 298 },
+    { x: 395, y: 329 },
+    { x: 350, y: 388 },
+    { x: 665, y: 320 },
+    { x: 648, y: 420 },
   ],
 
   /* ---- Campaign -------------------------------------------------------
