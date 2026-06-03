@@ -393,14 +393,14 @@ function simulateCity(cityIndex, opts) {
     if (opts.heroLevel) g.state.heroes[id].level = opts.heroLevel;
     if (opts.copies != null) g.state.heroes[id].copies = opts.copies;
   }
-  const battle = new LW.BattleManager(g, cityIndex);
+  const battle = new LW.BattleManager(g, cityIndex, opts.level || 0);
   battle.start();
   if (opts.speed) battle.setSpeed(opts.speed);
   let buys = 0;
   const dt = 1 / 60;
   let safety = 0;
   let sawBlocked = false;
-  const maxSteps = opts.maxSteps || 60 * 60 * 8; // up to 8 min of sim
+  const maxSteps = opts.maxSteps || 60 * 60 * 16; // up to 16 min of sim (long levels)
   while (safety++ < maxSteps) {
     battle.update(dt);
     // Drive per-hero active skills (a player would fire them on cooldown).
@@ -443,11 +443,29 @@ assert(base.battle.killCount > 0, "enemies were killed");
 assert(base.sawBlocked, "enemies were blocked at the bridge by the Fighter group");
 assert(base.battle.phase === "victory", "city 0 winnable without upgrades");
 
-// Wave + city rewards accrued from the winning run.
-assert(base.battle.game.state.regularCrystals >= LW.Config.WAVES_PER_CITY, "earned a Regular Crystal per wave");
-assert(base.battle.game.isCityCompleted(0), "city 0 marked complete");
-assert(base.battle.game.state.unlockedCity >= 1, "next city unlocked");
-assert(base.battle.game.state.epicCrystals > 0, "epic crystal granted on city clear");
+// Wave + level rewards accrued from the winning run (one level = BASE_WAVES).
+assert(base.battle.totalWaves === LW.Config.BASE_WAVES, "location 0 level has BASE_WAVES waves");
+assert(base.battle.game.state.regularCrystals >= LW.Config.BASE_WAVES, "earned a Regular Crystal per wave");
+assert(base.battle.game.levelsCleared(0) === 1, "level 0 marked cleared");
+assert(!base.battle.game.isCityCompleted(0), "location not complete after one level");
+assert(base.battle.game.isLevelUnlocked(0, 1), "next level unlocked");
+assert(base.battle.game.state.epicCrystals > 0, "epic crystal granted on level clear");
+
+// Growing wave structure: each later location adds a wave per level.
+assert(LW.Levels.wavesPerLevel(0) === 10, "Thornvale levels are 10 waves");
+assert(LW.Levels.wavesPerLevel(9) === 19, "Last Wall levels are 19 waves");
+const w5 = simulateCity(0, { gold: 0, buy: false, level: 5 });
+assert(w5.battle.levelIndex === 5 && w5.battle.totalWaves === 10, "later levels keep the location's wave count");
+
+// Clearing all levels of a location completes it and unlocks the next.
+{
+  LW.SaveGame.clear();
+  const g = new LW.GameInstance();
+  for (let l = 0; l < LW.Config.LEVELS_PER_CITY; l++) g.completeLevel(0, l);
+  assert(g.isCityCompleted(0), "location complete after all levels");
+  assert(g.state.unlockedCity >= 1, "next location unlocked when location complete");
+  assert(!g.isCityCompleted(1), "next location not auto-completed");
+}
 
 // The between-wave upgrade path also works and wins.
 const up = simulateCity(0, { gold: 100000, buy: true });
@@ -514,6 +532,11 @@ const ui = new LW.UI(appStub, game);
 ui.enterMeta("menu");
 assert(getEl("ui-root").children.length > 0, "menu rendered");
 for (const screen of ["campaign", "summon", "roster", "menu"]) ui.go(screen);
+// Levels screen renders for a location with a grid of LEVELS_PER_CITY cells.
+ui._openLevels(0);
+assert(ui.screen === "levels", "opening a location shows the levels screen");
+assert(getEl("ui-root").querySelectorAll(".level-cell").length === LW.Config.LEVELS_PER_CITY, "levels screen lists every level");
+ui.go("menu");
 ui._heroDetail("fighter_brick"); // opens modal
 assert(getEl("modal-root").children.length > 0, "hero detail modal opened");
 ui.closeModal();

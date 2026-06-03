@@ -20,8 +20,11 @@ LW.SaveGame = (function () {
       regularCrystals: 0,
       epicCrystals: 0,
       epicPity: 0, // non-Legendary Epic-banner pulls since the last Legendary
-      unlockedCity: 0, // highest city index the player may enter
-      completedCities: new Array(C.CITIES).fill(false),
+      unlockedCity: 0, // highest location index the player may enter
+      completedCities: new Array(C.CITIES).fill(false), // location fully cleared?
+      // Levels cleared within each location (0..LEVELS_PER_CITY). A location is
+      // complete when this reaches LEVELS_PER_CITY.
+      levelProgress: new Array(C.CITIES).fill(0),
       heroes, // { heroId: { level } }
       team: {
         bridge: "fighter_brick",
@@ -51,6 +54,12 @@ LW.SaveGame = (function () {
     const state = Object.assign(def, parsed);
     state.completedCities = (parsed.completedCities || def.completedCities).slice(0, C.CITIES);
     while (state.completedCities.length < C.CITIES) state.completedCities.push(false);
+    state.levelProgress = (parsed.levelProgress || def.levelProgress).slice(0, C.CITIES);
+    while (state.levelProgress.length < C.CITIES) state.levelProgress.push(0);
+    // A previously fully-completed location should count as all levels cleared.
+    for (let i = 0; i < C.CITIES; i++) {
+      if (state.completedCities[i] && state.levelProgress[i] < C.LEVELS_PER_CITY) state.levelProgress[i] = C.LEVELS_PER_CITY;
+    }
     state.team = Object.assign({}, def.team, parsed.team || {});
     state.heroes = Object.assign({}, parsed.heroes || def.heroes);
     // Normalize hero entries (older saves may lack level/copies).

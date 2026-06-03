@@ -11,6 +11,23 @@ LW.Config = {
   WORLD_W: 960,
   WORLD_H: 540,
 
+  /* Battle camera: the view is zoomed in and the player can pan/zoom around
+   * the map. zoom is a multiple of the fit-to-screen scale. */
+  CAM_DEFAULT_ZOOM: 1.75,
+  CAM_MIN_ZOOM: 1.0,
+  CAM_MAX_ZOOM: 2.8,
+
+  /* Monster sizing relative to the road. Enemy sprites are sized so their
+   * on-path WIDTH is a fraction of the painted road width: the smallest
+   * monsters span ~1/4 of the road, the largest (bosses) ~7/8. Width is
+   * interpolated per enemy from its `radius`, then the sprite height is derived
+   * from the image's aspect ratio at draw time (so widths are exact). */
+  PATH_WIDTH: 64,            // painted road width in world units (measured)
+  ENEMY_MIN_WIDTH_FRAC: 0.25, // smallest monster = 1/4 of the road
+  ENEMY_MAX_WIDTH_FRAC: 0.875, // boss = 7/8 of the road
+  ENEMY_MIN_RADIUS: 8,       // slimelet (maps to MIN width)
+  ENEMY_MAX_RADIUS: 24,      // ogre boss (maps to MAX width)
+
   SAVE_KEY: "lastwall.save.v1",
 
   /* Optional painted battle map. If this image is present it's drawn as the
@@ -34,7 +51,7 @@ LW.Config = {
       damage: 26, attackInterval: 0.75, range: 196, splash: 0,
       projSpeed: 470, projStyle: "arrow", damageType: "physical", element: "Neutral",
       color: "#caa15a",
-      h: 96, dy: 4, fireTime: 0.34, fireSeq: [1, 2, 3, 0],
+      h: 62, dy: 3, fireTime: 0.34, fireSeq: [1, 2, 3, 0],
       frames: ["assets/towers/tower_archer_0.png", "assets/towers/tower_archer_1.png", "assets/towers/tower_archer_2.png", "assets/towers/tower_archer_3.png"],
     },
     mage: {
@@ -42,7 +59,7 @@ LW.Config = {
       damage: 34, attackInterval: 1.25, range: 168, splash: 58,
       projSpeed: 360, projStyle: "magic", damageType: "magic", element: "Neutral",
       color: "#6fd3ff",
-      h: 100, dy: 4, fireTime: 0.5, fireSeq: [0],
+      h: 66, dy: 3, fireTime: 0.5, fireSeq: [0],
       frames: ["assets/towers/tower_mage_0.png"],
       glow: { color: "#6fd3ff", x: 0.5, y: 0.86, r: 0.42 },
     },
@@ -52,7 +69,7 @@ LW.Config = {
       spawnCount: 2, spawnInterval: 9, // infantry maintained + respawn cadence
       infantryHP: 150, infantryATK: 16, infantryInterval: 1.0,
       color: "#9fb0c4",
-      h: 94, dy: 4, fireTime: 0.3, fireSeq: [1, 0],
+      h: 60, dy: 3, fireTime: 0.3, fireSeq: [1, 0],
       frames: ["assets/towers/tower_guard_0.png", "assets/towers/tower_guard_1.png"],
     },
   },
@@ -76,9 +93,23 @@ LW.Config = {
     { x: 622, y: 250 },
   ],
 
-  /* ---- Campaign ------------------------------------------------------- */
+  /* ---- Campaign -------------------------------------------------------
+   * Two tiers: 10 LOCATIONS (castles), each with LEVELS_PER_CITY levels. A
+   * location's wave count grows with its index: Thornvale (0) = BASE_WAVES,
+   * and each later location adds WAVE_STEP. So Thornvale levels are 10 waves,
+   * Oakreach 11, … up to Last Wall at 19. */
   CITIES: 10,
-  WAVES_PER_CITY: 10,
+  LEVELS_PER_CITY: 10,
+  BASE_WAVES: 10,   // waves per level in the first location
+  WAVE_STEP: 1,     // extra waves per level for each later location
+  // Waves in a given location's levels.
+  wavesForCity(cityIndex) {
+    return this.BASE_WAVES + this.WAVE_STEP * (cityIndex || 0);
+  },
+  // Back-compat: the old fixed constant (first location's wave count).
+  get WAVES_PER_CITY() {
+    return this.BASE_WAVES;
+  },
 
   /* ---- Rarity --------------------------------------------------------- */
   RARITY: {
@@ -272,12 +303,15 @@ LW.Config = {
     turret: { baseCost: 65, costStep: 35, dmgPct: 0.15, cdReduce: 0.08, splashAt: 3, projAt: 5 },
   },
 
-  /* ---- Rewards -------------------------------------------------------- */
+  /* ---- Rewards --------------------------------------------------------
+   * waveGold scales with the location (city) and the wave within a level.
+   * levelGold/levelEpicCrystals are granted when a LEVEL is cleared and scale
+   * with both the location and the level index within it. */
   reward: {
     waveGold: (city, wave) => 35 + 8 * wave + 12 * city,
-    levelGold: (city) => 200 + 60 * city,
+    levelGold: (city, level) => 120 + 40 * city + 18 * (level || 0),
     waveCrystals: 1, // Regular Summon Crystal per wave
-    levelEpicCrystals: 1, // Epic Summon Crystal per level
+    levelEpicCrystals: 1, // Epic Summon Crystal per level cleared
     dupeGold: { Rare: 60, Epic: 180, Legendary: 500 },
   },
 
@@ -304,10 +338,9 @@ LW.Config = {
   /* ---- Battle pacing --------------------------------------------------- */
   spawnInterval: 0.85, // seconds between enemies inside a wave (scaled down later)
   speedOptions: [1, 2, 4, 8],
-  // Global enemy march-speed multiplier. The Ironcove Pass road is longer than
-  // a straight lane, so enemies move a touch faster to keep the original pacing
-  // (time-to-reach and time-in-range) and the tuned difficulty curve intact.
-  ENEMY_SPEED_MULT: 1.2,
+  // Global enemy march-speed multiplier — tuned against the difficulty band so
+  // the road's time-to-reach / time-in-range keeps the campaign curve intact.
+  ENEMY_SPEED_MULT: 1.4,
 
   /* ---- Layout anchors (logical coordinates, 960x540 landscape) ---------
    * Traced onto the painted Ironcove Pass map (assets/map_ironcove.png):
@@ -317,13 +350,13 @@ LW.Config = {
    * before the castle and blocks it. (Towers are built separately on PLOTS;
    * heroes no longer have support units.) */
   anchors: {
-    Anchor_Bastion_Left_Hero: { x: 196, y: 272 },      // Hero Bastion 1 (lower-left platform)
-    Anchor_Bastion_Right_Hero: { x: 545, y: 106 },     // Hero Bastion 2 (upper-centre platform)
-    Anchor_Bridge_Hero: { x: 820, y: 350 },            // Fighter hero, on the road before the castle
-    Anchor_EnemySpawn_Top: { x: 120, y: 80 },          // Demonic Gate
-    Anchor_CityDamagePoint: { x: 868, y: 408 },        // Castle gate
-    Anchor_Turret_Main: { x: 880, y: 360 },            // Castle cannon
-    Anchor_CameraFocus: { x: 480, y: 280 },
+    Anchor_Bastion_Left_Hero: { x: 213, y: 340 },      // Hero centred on Bastion 1 (lower-left platform)
+    Anchor_Bastion_Right_Hero: { x: 545, y: 134 },     // Hero centred on Bastion 2 (upper-centre platform)
+    Anchor_Bridge_Hero: { x: 730, y: 336 },            // Fighter hero, centred on the road before the castle
+    Anchor_EnemySpawn_Top: { x: 58, y: 132 },          // Demonic Gate (path start)
+    Anchor_CityDamagePoint: { x: 856, y: 400 },        // Castle gate (path end)
+    Anchor_Turret_Main: { x: 888, y: 372 },            // Castle cannon
+    Anchor_CameraFocus: { x: 470, y: 250 },
   },
 
   /* One winding road, modelled as three closely-spaced trails so a few enemies
@@ -335,8 +368,8 @@ LW.Config = {
   blockLane: 1,
   laneWeights: [0.22, 0.56, 0.22],
   lanes: [
-    { points: [{ x: 141, y: 80 }, { x: 215, y: 139 }, { x: 262, y: 200 }, { x: 262, y: 267 }, { x: 227, y: 297 }, { x: 262, y: 317 }, { x: 329, y: 290 }, { x: 372, y: 228 }, { x: 448, y: 210 }, { x: 516, y: 182 }, { x: 597, y: 163 }, { x: 674, y: 150 }, { x: 746, y: 185 }, { x: 779, y: 249 }, { x: 812, y: 304 }, { x: 848, y: 351 }, { x: 880, y: 400 }] },
-    { points: [{ x: 132, y: 92 }, { x: 205, y: 150 }, { x: 248, y: 205 }, { x: 248, y: 262 }, { x: 212, y: 300 }, { x: 262, y: 332 }, { x: 338, y: 302 }, { x: 380, y: 240 }, { x: 452, y: 224 }, { x: 520, y: 196 }, { x: 600, y: 178 }, { x: 672, y: 165 }, { x: 736, y: 196 }, { x: 766, y: 256 }, { x: 800, y: 312 }, { x: 836, y: 360 }, { x: 868, y: 408 }] },
-    { points: [{ x: 123, y: 104 }, { x: 195, y: 161 }, { x: 234, y: 210 }, { x: 234, y: 257 }, { x: 197, y: 303 }, { x: 262, y: 347 }, { x: 347, y: 314 }, { x: 388, y: 252 }, { x: 456, y: 238 }, { x: 524, y: 210 }, { x: 603, y: 193 }, { x: 670, y: 180 }, { x: 726, y: 207 }, { x: 753, y: 263 }, { x: 788, y: 320 }, { x: 824, y: 369 }, { x: 856, y: 416 }] },
+    { points: [{ x: 61, y: 119 }, { x: 144, y: 138 }, { x: 207, y: 163 }, { x: 251, y: 211 }, { x: 256, y: 241 }, { x: 291, y: 238 }, { x: 329, y: 209 }, { x: 387, y: 176 }, { x: 457, y: 153 }, { x: 540, y: 145 }, { x: 603, y: 149 }, { x: 656, y: 178 }, { x: 701, y: 225 }, { x: 719, y: 281 }, { x: 692, y: 330 }, { x: 628, y: 330 }, { x: 583, y: 301 }, { x: 556, y: 285 }, { x: 532, y: 300 }, { x: 538, y: 338 }, { x: 592, y: 372 }, { x: 668, y: 379 }, { x: 748, y: 371 }, { x: 810, y: 377 }, { x: 860, y: 392 }] },
+    { points: [{ x: 58, y: 132 }, { x: 140, y: 150 }, { x: 200, y: 174 }, { x: 240, y: 218 }, { x: 250, y: 252 }, { x: 296, y: 250 }, { x: 336, y: 220 }, { x: 392, y: 188 }, { x: 460, y: 166 }, { x: 540, y: 158 }, { x: 600, y: 162 }, { x: 648, y: 188 }, { x: 690, y: 232 }, { x: 706, y: 280 }, { x: 686, y: 318 }, { x: 632, y: 318 }, { x: 590, y: 290 }, { x: 555, y: 272 }, { x: 520, y: 296 }, { x: 528, y: 346 }, { x: 588, y: 384 }, { x: 668, y: 392 }, { x: 748, y: 384 }, { x: 808, y: 390 }, { x: 856, y: 404 }] },
+    { points: [{ x: 55, y: 145 }, { x: 136, y: 162 }, { x: 193, y: 185 }, { x: 229, y: 225 }, { x: 244, y: 263 }, { x: 301, y: 262 }, { x: 343, y: 231 }, { x: 397, y: 200 }, { x: 463, y: 179 }, { x: 540, y: 171 }, { x: 597, y: 175 }, { x: 640, y: 198 }, { x: 679, y: 239 }, { x: 693, y: 279 }, { x: 680, y: 306 }, { x: 636, y: 306 }, { x: 597, y: 279 }, { x: 554, y: 259 }, { x: 508, y: 292 }, { x: 518, y: 354 }, { x: 584, y: 396 }, { x: 668, y: 405 }, { x: 748, y: 397 }, { x: 806, y: 403 }, { x: 852, y: 416 }] },
   ],
 };

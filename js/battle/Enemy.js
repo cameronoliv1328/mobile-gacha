@@ -30,6 +30,15 @@ LW.Enemy = class Enemy {
     this.cityDamage = def.cityDamage;
     this.isBoss = !!def.isBoss;
     this.radius = def.radius;
+    // Target on-path WIDTH (world units): interpolate the monster's radius
+    // between the smallest (1/4 road) and the boss (7/8 road). The drawn sprite
+    // height is derived from this width and the image aspect ratio in render().
+    const C = LW.Config;
+    const pw = C.PATH_WIDTH || 64;
+    const t = LW.util.clamp((def.radius - C.ENEMY_MIN_RADIUS) / Math.max(1, C.ENEMY_MAX_RADIUS - C.ENEMY_MIN_RADIUS), 0, 1);
+    const frac = LW.util.lerp(C.ENEMY_MIN_WIDTH_FRAC, C.ENEMY_MAX_WIDTH_FRAC, t);
+    this.targetWidth = pw * frac;
+    // Fallback height for the procedural (no-image) painter: keep radius-based.
     this.spriteH = def.radius * (def.isBoss ? 5 : 4);
     this.color = def.color;
     this.accent = def.accent;
@@ -292,10 +301,12 @@ LW.Enemy = class Enemy {
     const hover = this.hover * depth * (1 + (this.flying ? Math.sin(this.t * 4) * 0.12 : 0));
     let topY, halfW;
     if (img) {
-      const h = this.spriteH * depth;
+      // Size by target on-path WIDTH; derive height from the image aspect ratio.
+      const drawW = this.targetWidth * depth;
+      const h = drawW / (img.width / img.height);
       const tr = LW.Anim.enemyTransform({ t: this.t, facing: this.facing, moving: this.state === "move", attacking: this.attackAnimT > 0, attackT: this.attackAnimT, attackDur: this.attackAnimDur });
       LW.Sprites.drawSprite(ctx, img, { x: this.x, y: this.y - hover, shadowY: this.y, h, facing: this.facing, tr });
-      halfW = (h * (img.width / img.height)) / 2;
+      halfW = drawW / 2;
       topY = this.y - hover - h - 4;
     } else {
       const s = depth * 1.15;

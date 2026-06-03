@@ -39,13 +39,16 @@ Progress (currencies, heroes, levels, team, campaign) saves automatically to `lo
 
 ## The game loop
 
-1. **Campaign** — 10 maps, each with 10 waves. Pick an unlocked map.
+1. **Campaign** — 10 locations (castles). Tap one to open its **Levels** screen: each location has
+   **10 levels**, and a location's wave count grows with its index — Thornvale's levels are 10 waves,
+   the next location 11, … up to the final location at 19. Clear a level to unlock the next; clear all
+   10 levels of a location to unlock the next location.
 2. **Battle** — enemies emerge from the Demonic Gate and follow the winding road. Your bastion
    heroes + castle cannon rain fire on the road; the Fighter's vanguard blocks the choke in front of
    the castle. If enemies reach the castle they damage **City HP** — lose all of it and the castle falls.
 3. **Between waves** — spend gold to **Upgrade Heroes / Wall / Turret**, then continue.
-4. **Rewards** — every wave grants gold + **1 Regular Crystal**; clearing a map grants bonus gold +
-   **1 Epic Crystal** and unlocks the next map.
+4. **Rewards** — every wave grants gold + **1 Regular Crystal**; clearing a level grants bonus gold +
+   **1 Epic Crystal** (and unlocks the next level/location).
 5. **Summon** — spend crystals on two banners; level up and re-team your roster.
 
 ### Towers (built on plots for gold)

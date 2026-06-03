@@ -47,34 +47,68 @@ LW.GameInstance = class GameInstance extends LW.util.Emitter {
     this.emit("change");
   }
 
-  /* ---- Campaign progression ------------------------------------------- */
+  /* ---- Campaign progression -------------------------------------------
+   * Two tiers: locations (cities) each contain LEVELS_PER_CITY levels. A level
+   * is unlocked when the previous level in its location is cleared; a location
+   * is unlocked when the previous location is fully completed. */
 
   isCityUnlocked(cityIndex) {
     return cityIndex >= 0 && cityIndex <= this.state.unlockedCity;
   }
 
-  isCityCompleted(cityIndex) {
-    return !!this.state.completedCities[cityIndex];
+  // Levels cleared in a location (0..LEVELS_PER_CITY).
+  levelsCleared(cityIndex) {
+    return (this.state.levelProgress && this.state.levelProgress[cityIndex]) || 0;
   }
 
-  /* Reward + unlock when a city's 10th wave is cleared. Returns the reward. */
-  completeCity(cityIndex) {
-    const wasCompleted = this.state.completedCities[cityIndex];
-    this.state.completedCities[cityIndex] = true;
+  isCityCompleted(cityIndex) {
+    return this.levelsCleared(cityIndex) >= LW.Config.LEVELS_PER_CITY;
+  }
 
-    const bonusGold = LW.Config.reward.levelGold(cityIndex);
+  // A level is unlocked if its location is unlocked and all prior levels there
+  // are cleared (level 0 is always available in an unlocked location).
+  isLevelUnlocked(cityIndex, levelIndex) {
+    if (!this.isCityUnlocked(cityIndex)) return false;
+    return levelIndex <= this.levelsCleared(cityIndex);
+  }
+
+  isLevelCompleted(cityIndex, levelIndex) {
+    return levelIndex < this.levelsCleared(cityIndex);
+  }
+
+  /* Reward + unlock when a LEVEL's final wave is cleared. Returns the reward.
+   * Completing the last level of a location unlocks the next location. */
+  completeLevel(cityIndex, levelIndex) {
+    const already = this.isLevelCompleted(cityIndex, levelIndex);
+    // Advance the location's cleared-level count (only ever forward).
+    if (levelIndex + 1 > this.levelsCleared(cityIndex)) {
+      this.state.levelProgress[cityIndex] = levelIndex + 1;
+    }
+    const cityDone = this.isCityCompleted(cityIndex);
+    this.state.completedCities[cityIndex] = cityDone;
+
+    const bonusGold = LW.Config.reward.levelGold(cityIndex, levelIndex);
     const epic = LW.Config.reward.levelEpicCrystals;
     this.state.gold += bonusGold;
     this.state.epicCrystals += epic;
 
-    const next = Math.min(LW.Config.CITIES - 1, cityIndex + 1);
-    if (next > this.state.unlockedCity) this.state.unlockedCity = next;
+    // Unlock the next location once this one is fully cleared.
+    if (cityDone) {
+      const next = Math.min(LW.Config.CITIES - 1, cityIndex + 1);
+      if (next > this.state.unlockedCity) this.state.unlockedCity = next;
+    }
 
-    if (!wasCompleted) this.state.stats.citiesCleared = (this.state.stats.citiesCleared || 0) + 1;
+    if (!already) this.state.stats.levelsCleared = (this.state.stats.levelsCleared || 0) + 1;
+    if (cityDone) this.state.stats.citiesCleared = (this.state.stats.citiesCleared || 0) + 1;
 
     this.persist();
     this.emit("change");
-    return { bonusGold, epicCrystals: epic, unlockedCity: this.state.unlockedCity };
+    return { bonusGold, epicCrystals: epic, cityDone, unlockedCity: this.state.unlockedCity, levelsCleared: this.levelsCleared(cityIndex) };
+  }
+
+  /* Back-compat shim: completing "a city" == completing its level 0. */
+  completeCity(cityIndex) {
+    return this.completeLevel(cityIndex, 0);
   }
 
   /* Reward for clearing a single (non-final) wave. */

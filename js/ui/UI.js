@@ -53,6 +53,7 @@ LW.UI = class UI {
     let node;
     if (this.screen === "menu") node = this._menu();
     else if (this.screen === "campaign") node = this._campaign();
+    else if (this.screen === "levels") node = this._levels(this.levelsCity || 0);
     else if (this.screen === "summon") node = this._summon();
     else if (this.screen === "roster") node = this._roster();
     else if (this.screen === "hero") node = this._heroScreen(this.inspectId);
@@ -314,23 +315,62 @@ LW.UI = class UI {
     wrap.appendChild(this._teamStrip());
 
     const list = this.el("div", { class: "city-list" });
+    const LPC = LW.Config.LEVELS_PER_CITY;
     for (let i = 0; i < LW.Config.CITIES; i++) {
       const unlocked = this.game.isCityUnlocked(i);
       const done = this.game.isCityCompleted(i);
+      const cleared = this.game.levelsCleared(i);
       const node = this.el("div", {
         class: "city-node" + (unlocked ? "" : " locked") + (done ? " done" : "") + (i === this.game.state.unlockedCity ? " current" : ""),
-        onclick: unlocked ? () => this._launch(i) : () => this.toast("Clear the previous city first"),
+        onclick: unlocked ? () => this._openLevels(i) : () => this.toast("Clear the previous location first"),
       });
       node.appendChild(this.el("div", { class: "city-num", text: String(i + 1) }));
+      const meta = done ? "✓ cleared" : cleared + " / " + LPC + " levels";
       const info = this.el("div", { class: "city-info" }, [
         this.el("div", { class: "city-name", text: LW.Levels.cityName(i) }),
-        this.el("div", { class: "city-meta", text: LW.Config.WAVES_PER_CITY + " waves" + (done ? "  ·  ✓ cleared" : "") }),
+        this.el("div", { class: "city-meta", text: LPC + " levels · " + LW.Levels.wavesPerLevel(i) + " waves each  ·  " + meta }),
       ]);
       node.appendChild(info);
-      node.appendChild(this.el("div", { class: "city-status", text: unlocked ? (done ? "Replay" : "Battle ›") : "🔒" }));
+      node.appendChild(this.el("div", { class: "city-status", text: unlocked ? (done ? "Replay ›" : "Enter ›") : "🔒" }));
       list.appendChild(node);
     }
     wrap.appendChild(list);
+    return wrap;
+  }
+
+  _openLevels(cityIndex) {
+    this.levelsCity = cityIndex;
+    this.go("levels");
+  }
+
+  /* ===================================================================== *
+   *  Levels screen (one location's 10 levels)
+   * ===================================================================== */
+
+  _levels(cityIndex) {
+    const wrap = this.el("div", { class: "screen levels-screen" });
+    wrap.appendChild(this.header(LW.Levels.cityName(cityIndex), () => this.go("campaign")));
+    wrap.appendChild(this.currencyBar());
+    wrap.appendChild(this._teamStrip());
+
+    const waves = LW.Levels.wavesPerLevel(cityIndex);
+    const cleared = this.game.levelsCleared(cityIndex);
+    wrap.appendChild(this.el("div", { class: "levels-sub muted", text: cleared + " / " + LW.Config.LEVELS_PER_CITY + " levels cleared  ·  " + waves + " waves per level" }));
+
+    const grid = this.el("div", { class: "level-grid" });
+    for (let l = 0; l < LW.Config.LEVELS_PER_CITY; l++) {
+      const unlocked = this.game.isLevelUnlocked(cityIndex, l);
+      const done = this.game.isLevelCompleted(cityIndex, l);
+      const current = unlocked && !done;
+      const cell = this.el("div", {
+        class: "level-cell" + (unlocked ? "" : " locked") + (done ? " done" : "") + (current ? " current" : ""),
+        onclick: unlocked ? () => this._launch(cityIndex, l) : () => this.toast("Clear the previous level first"),
+      });
+      cell.appendChild(this.el("div", { class: "level-num", text: done ? "✓" : String(l + 1) }));
+      cell.appendChild(this.el("div", { class: "level-lbl", text: unlocked ? "Level " + (l + 1) : "🔒" }));
+      grid.appendChild(cell);
+    }
+    wrap.appendChild(grid);
     return wrap;
   }
 
@@ -361,13 +401,13 @@ LW.UI = class UI {
     return this.el("div", { class: "team-strip-wrap" }, [strip, this._synergyBanner()]);
   }
 
-  _launch(cityIndex) {
+  _launch(cityIndex, levelIndex) {
     if (!this.game.heroes.validateTeam()) {
       this.toast("Set a Fighter in the vanguard and 2 ranged heroes on the bastions");
       this.go("roster");
       return;
     }
-    this.app.startBattle(cityIndex);
+    this.app.startBattle(cityIndex, levelIndex || 0);
   }
 
   /* ===================================================================== *
@@ -859,9 +899,13 @@ LW.UI = class UI {
 
   /* ---- Tower build / sell radial menu --------------------------------- */
 
-  // World (960x540) -> on-stage percentage, so the popup tracks the plot.
-  _worldToPct(x, y) {
-    return { left: (x / LW.Config.WORLD_W) * 100, top: (y / LW.Config.WORLD_H) * 100 };
+  // Keep the open tower menu pinned over its plot as the camera pans/zooms.
+  _positionTowerMenu() {
+    if (!this.towerMenu || !this.app.worldToScreen) return;
+    const p = this.towerMenu._world;
+    const s = this.app.worldToScreen(p.x, p.y);
+    this.towerMenu.style.left = s.x + "px";
+    this.towerMenu.style.top = s.y + "px";
   }
 
   openTowerMenu(plotIndex) {
@@ -870,11 +914,9 @@ LW.UI = class UI {
     this.battle.highlightPlot = plotIndex;
     const plot = LW.Config.PLOTS[plotIndex];
     const existing = this.battle.plotTowers[plotIndex];
-    const pos = this._worldToPct(plot.x, plot.y);
 
     const menu = this.el("div", { class: "tower-menu" });
-    menu.style.left = pos.left + "%";
-    menu.style.top = pos.top + "%";
+    menu._world = { x: plot.x, y: plot.y };
 
     if (existing) {
       // Occupied: show name + sell.
@@ -915,6 +957,7 @@ LW.UI = class UI {
     menu.appendChild(close);
     this.battleHud.appendChild(menu);
     this.towerMenu = menu;
+    this._positionTowerMenu();
   }
 
   closeTowerMenu() {
@@ -932,7 +975,7 @@ LW.UI = class UI {
     const pauseBtn = this.el("button", { class: "btn-icon", text: "⏸", onclick: () => this.app.togglePause() });
 
     const top = this.el("div", { class: "hud-top" }, [
-      this.el("div", { class: "hud-left" }, [this.el("div", { class: "hud-city", text: this.battle.cityName }), wave]),
+      this.el("div", { class: "hud-left" }, [this.el("div", { class: "hud-city", text: this.battle.cityName + " · Lv " + (this.battle.levelIndex + 1) }), wave]),
       this.el("div", { class: "hud-right" }, [this.el("div", { class: "chip" }, [this._gem("gold"), gold]), speedBtn, pauseBtn]),
     ]);
     const cityHp = this.el("div", { class: "cityhp" }, [
@@ -968,6 +1011,7 @@ LW.UI = class UI {
 
   updateBattleHUD() {
     if (!this.hudRefs || !this.battle) return;
+    if (this.towerMenu) this._positionTowerMenu(); // track camera pan/zoom
     const h = this.battle.hud();
     this.hudRefs.wave.innerHTML =
       "Wave <b>" + h.wave + "</b> / " + h.totalWaves + (h.isBoss && h.phase === "fighting" ? ' <span class="boss-tag">BOSS</span>' : "");
@@ -1125,18 +1169,27 @@ LW.UI = class UI {
   /* ---- Result overlays ----------------------------------------------- */
 
   _onVictory(v) {
+    const b = this.battle;
+    const cityDone = v.cityReward && v.cityReward.cityDone;
     const panel = this.el("div", { class: "panel result-panel victory" });
-    panel.appendChild(this.el("div", { class: "result-banner", text: "City Defended!" }));
-    panel.appendChild(this.el("div", { class: "result-city", text: this.battle.cityName }));
+    panel.appendChild(this.el("div", { class: "result-banner", text: cityDone ? "Location Cleared!" : "Level Cleared!" }));
+    panel.appendChild(this.el("div", { class: "result-city", text: b.cityName + " · Level " + (b.levelIndex + 1) }));
     const rew = this.el("div", { class: "result-rewards" }, [
       this.el("div", { class: "rr" }, [this._gem("gold"), this.el("span", { text: " +" + v.cityReward.bonusGold + " bonus gold" })]),
       this.el("div", { class: "rr" }, [this._gem("epic"), this.el("span", { text: " +" + v.cityReward.epicCrystals + " Epic Crystal" })]),
     ]);
     panel.appendChild(rew);
-    const hasNext = this.battle.cityIndex + 1 < LW.Config.CITIES;
+
     const actions = this.el("div", { class: "result-actions" });
-    if (hasNext) actions.appendChild(this.el("button", { class: "btn btn-primary big", text: "Next City ›", onclick: () => this.app.startBattle(this.battle.cityIndex + 1) }));
-    actions.appendChild(this.el("button", { class: "btn", text: "Campaign", onclick: () => this.app.quitBattle("campaign") }));
+    const lastLevel = b.levelIndex + 1 >= LW.Config.LEVELS_PER_CITY;
+    if (!lastLevel) {
+      // Next level in this location.
+      actions.appendChild(this.el("button", { class: "btn btn-primary big", text: "Next Level ›", onclick: () => this.app.startBattle(b.cityIndex, b.levelIndex + 1) }));
+    } else if (b.cityIndex + 1 < LW.Config.CITIES) {
+      // Location finished — offer the next location's first level.
+      actions.appendChild(this.el("button", { class: "btn btn-primary big", text: "Next Location ›", onclick: () => this.app.startBattle(b.cityIndex + 1, 0) }));
+    }
+    actions.appendChild(this.el("button", { class: "btn", text: "Levels", onclick: () => { this.app.quitBattle(); this._openLevels(b.cityIndex); } }));
     actions.appendChild(this.el("button", { class: "btn", text: "Summon", onclick: () => this.app.quitBattle("summon") }));
     panel.appendChild(actions);
     this.battleOverlay.appendChild(panel);
@@ -1144,12 +1197,13 @@ LW.UI = class UI {
   }
 
   _onDefeat() {
+    const b = this.battle;
     const panel = this.el("div", { class: "panel result-panel defeat" });
     panel.appendChild(this.el("div", { class: "result-banner", text: "The Wall Has Fallen" }));
-    panel.appendChild(this.el("div", { class: "result-city", text: "Reached Wave " + (this.battle.waveIndex + 1) + " of " + LW.Config.WAVES_PER_CITY }));
+    panel.appendChild(this.el("div", { class: "result-city", text: b.cityName + " · Level " + (b.levelIndex + 1) + " — reached Wave " + (b.waveIndex + 1) + " of " + b.totalWaves }));
     const actions = this.el("div", { class: "result-actions" }, [
-      this.el("button", { class: "btn btn-primary big", text: "Retry", onclick: () => this.app.startBattle(this.battle.cityIndex) }),
-      this.el("button", { class: "btn", text: "Campaign", onclick: () => this.app.quitBattle("campaign") }),
+      this.el("button", { class: "btn btn-primary big", text: "Retry", onclick: () => this.app.startBattle(b.cityIndex, b.levelIndex) }),
+      this.el("button", { class: "btn", text: "Levels", onclick: () => { this.app.quitBattle(); this._openLevels(b.cityIndex); } }),
       this.el("button", { class: "btn", text: "Upgrade Heroes", onclick: () => this.app.quitBattle("roster") }),
     ]);
     panel.appendChild(actions);
@@ -1162,7 +1216,7 @@ LW.UI = class UI {
       this.el("div", { class: "panel-title", text: "Paused" }),
       this.el("div", { class: "result-actions" }, [
         this.el("button", { class: "btn btn-primary", text: "Resume", onclick: () => this.app.togglePause() }),
-        this.el("button", { class: "btn", text: "Restart City", onclick: () => this.app.startBattle(this.battle.cityIndex) }),
+        this.el("button", { class: "btn", text: "Restart Level", onclick: () => this.app.startBattle(this.battle.cityIndex, this.battle.levelIndex) }),
         this.el("button", { class: "btn", text: "Quit to Campaign", onclick: () => this.app.quitBattle("campaign") }),
       ]),
     ]);
